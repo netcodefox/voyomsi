@@ -6,7 +6,7 @@ promoted to stable releases (see [docs/VERSIONING.md](docs/VERSIONING.md)); the 
 
 > VoyOMSI is a fork of openOMSI; the entries below up to the fork were written for openOMSI.
 
-## Unreleased
+## 1.0.1 - 2026-10-22
 
 ### VoyOMSI
 
