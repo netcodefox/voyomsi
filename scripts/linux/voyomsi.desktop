@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=VoyOMSI
+Comment=Bus simulator compatible with OMSI 2 maps and mods
+Exec=voyomsi
+Icon=voyomsi
+Categories=Game;Simulation;
+Terminal=false
