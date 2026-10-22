@@ -8,7 +8,7 @@ description = "Voice chat: microphone capture, Opus coding, jitter buffer, radio
 [dependencies]
 omsi-audio = { path = "../omsi-audio" }
 omsi-cfg = { path = "../omsi-cfg" }
-cpal = "0.15"
+cpal = "0.18"
 # libopus transpiled to Rust (BSD-3-Clause, the codec's own licence): builds with plain cargo
 # on every platform, no C compiler, cmake or system library needed
 unsafe-libopus = "0.2"
