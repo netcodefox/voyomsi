@@ -6,7 +6,23 @@ promoted to stable releases (see [docs/VERSIONING.md](docs/VERSIONING.md)); the 
 
 > VoyOMSI is a fork of openOMSI; the entries below up to the fork were written for openOMSI.
 
-## Unreleased
+## 1.0.0 - 2026-10-22
+
+The first release of VoyOMSI.
+
+### VoyOMSI
+
+- **VoyOMSI**: the game, the launcher, the installers and the updates carry the new name; the
+  updater looks for releases in [netcodefox/voyomsi](https://github.com/netcodefox/voyomsi).
+  Settings and data are kept in `.voyomsi`.
+- **Short session codes**: a hosted game gives a 12-character code (`OMSI-XXXX-XXXX-XXXX`)
+  instead of 24 to 37 characters. The joining game finds the host on the local network, else
+  through the relay. The longer codes are still read; without the internet (a VPN alone) join
+  by the host's address.
+- **Donations** go to [voyspeak.com/donate](https://voyspeak.com/donate).
+- Updated libraries: symphonia 0.6 (radio and sound files), cpal 0.18 (sound output and the
+  microphone), mlua 0.12 (Lua plugins), rfd, zstd, unrar, 7-Zip and others.
+
 
 ### New
 
