@@ -74,7 +74,7 @@ fn run(open: mpsc::Receiver<()>, opened: mpsc::Sender<Option<String>>, shared: &
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 next_look = Instant::now() + Duration::from_secs(2);
                 if let Some(current) = watched.as_mut() {
-                    let name = cpal::default_host().default_output_device().and_then(|d| d.name().ok()).unwrap_or_default();
+                    let name = cpal::default_host().default_output_device().and_then(|d| d.description().ok()).map(|d| d.name().to_string()).unwrap_or_default();
                     if name != *current {
                         *current = name;
                         reopen.store(true, Ordering::Relaxed);
@@ -95,7 +95,7 @@ fn open_default(shared: &Arc<Shared>, mixer: &Arc<MixerCell>, reopen: &Arc<Atomi
         log::warn!("audio: no output device");
         return None;
     };
-    let name = dev.name().unwrap_or_default();
+    let name = dev.description().map(|d| d.name().to_string()).unwrap_or_default();
     let cfg = match dev.default_output_config() {
         Ok(c) => c,
         Err(e) => {
@@ -103,7 +103,7 @@ fn open_default(shared: &Arc<Shared>, mixer: &Arc<MixerCell>, reopen: &Arc<Atomi
             return None;
         }
     };
-    let (rate, ch) = (cfg.sample_rate().0, cfg.channels().max(1) as usize);
+    let (rate, ch) = (cfg.sample_rate(), cfg.channels().max(1) as usize);
     shared.sample_rate.store(rate, Ordering::Relaxed);
     shared.channels.store(ch, Ordering::Relaxed);
     let cell = mixer.clone();
@@ -112,7 +112,7 @@ fn open_default(shared: &Arc<Shared>, mixer: &Arc<MixerCell>, reopen: &Arc<Atomi
     // nothing; the mixer's old ones are let go of with the stream)
     let mut spare = Reverb::ready(rate, ch);
     let stream = dev.build_output_stream(
-        &cfg.config(),
+        cfg.config(),
         move |data: &mut [f32], _| {
             let mixed = cell.try_with(|m| {
                 m.adopt_reverb(&mut spare);
@@ -124,7 +124,7 @@ fn open_default(shared: &Arc<Shared>, mixer: &Arc<MixerCell>, reopen: &Arc<Atomi
         },
         move |e| {
             // (a lost device only: a driver's hiccups are not worth a new stream)
-            if matches!(e, cpal::StreamError::DeviceNotAvailable) {
+            if e.kind() == cpal::ErrorKind::DeviceNotAvailable {
                 lost.store(true, Ordering::Relaxed);
             }
             log::warn!("audio stream error: {e}");
