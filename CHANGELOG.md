@@ -16,8 +16,9 @@ promoted to stable releases (see [docs/VERSIONING.md](docs/VERSIONING.md)); the 
   newer one do not find each other's VoySpeak server; update both.
 - **The radio key has a key again**: OMSI's own key file gives B to the hazard lights, so the
   voice chat's radio was left without one. It is H now (or J), also where it was saved unbound.
-- **Discord**: the presence has a *Get VoyOMSI* button; `assets/discord/logo.png` is the picture
-  for a Discord application of VoyOMSI's own (asset name `logo`).
+- **Discord**: the status shows *Playing VoyOMSI* with VoyOMSI's logo (its own Discord
+  application) and a *Get VoyOMSI* button; `assets/discord/logo.png` is the application's
+  `logo` asset.
 
 ## 1.0.1 - 2026-10-22
 

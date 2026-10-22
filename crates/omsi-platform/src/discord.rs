@@ -7,8 +7,8 @@ use std::sync::{
 };
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-// Shared test application; replace centrally if a different application is used for release.
-pub const DEFAULT_APP_ID: &str = "1555504817110122526";
+// VoyOMSI's own Discord application (its name and its "logo" asset are what Discord shows).
+pub const DEFAULT_APP_ID: &str = "1562930819453030552";
 /// The button under the presence: where others get VoyOMSI.
 const BUTTON: (&str, &str) = ("Get VoyOMSI", "https://github.com/netcodefox/voyomsi/releases/latest");
 const MAX_FRAME: usize = 64 * 1024;
@@ -978,6 +978,6 @@ mod tests {
 
     #[test]
     fn empty_application_id_uses_shared_test_id() {
-        assert_eq!(DEFAULT_APP_ID, "1555504817110122526");
+        assert_eq!(DEFAULT_APP_ID, "1562930819453030552");
     }
 }
