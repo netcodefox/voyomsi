@@ -8,12 +8,12 @@ use crate::stream::StreamBuf;
 use std::io::Read;
 use std::sync::Arc;
 use std::time::Duration;
-use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::DecoderOptions;
-use symphonia::core::formats::{FormatOptions, FormatReader};
+use symphonia::core::codecs::audio::AudioDecoderOptions;
+use symphonia::core::codecs::CodecParameters;
+use symphonia::core::formats::probe::Hint;
+use symphonia::core::formats::{FormatOptions, FormatReader, TrackType};
 use symphonia::core::io::{MediaSourceStream, ReadOnlySource};
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 /// Seconds of sound read ahead at most; a server that sends a burst at the start (many do,
 /// to fill a player's buffer) is simply read more slowly.
@@ -117,18 +117,19 @@ fn play(agent: &ureq::Agent, buf: &StreamBuf, url: &str) -> anyhow::Result<()> {
     // AAC is read as ADTS straight away: probed, its frame headers pass for MPEG audio and
     // the MP3 reader takes it
     let mut format: Box<dyn FormatReader> = if ctype.contains("aac") {
-        Box::new(symphonia::default::formats::AdtsReader::try_new(mss, &FormatOptions::default())?)
+        Box::new(symphonia::default::formats::AdtsReader::try_new(mss, FormatOptions::default())?)
     } else {
-        symphonia::default::get_probe()
-            .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())?
-            .format
+        symphonia::default::get_probe().probe(&hint, mss, FormatOptions::default(), MetadataOptions::default())?
     };
     let track = format
-        .default_track()
+        .default_track(TrackType::Audio)
         .ok_or_else(|| anyhow::anyhow!("no audio in the stream"))?
         .clone();
-    let mut decoder = symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
-    let mut samples: Option<SampleBuffer<f32>> = None;
+    let Some(CodecParameters::Audio(params)) = &track.codec_params else {
+        anyhow::bail!("no audio in the stream");
+    };
+    let mut decoder = symphonia::default::get_codecs().make_audio_decoder(params, &AudioDecoderOptions::default())?;
+    let mut samples: Vec<f32> = Vec::new();
     let mut shown = String::new();
     loop {
         if buf.is_closed() {
@@ -138,11 +139,12 @@ fn play(agent: &ureq::Agent, buf: &StreamBuf, url: &str) -> anyhow::Result<()> {
             std::thread::sleep(Duration::from_millis(100));
         }
         let packet = match format.next_packet() {
-            Ok(p) => p,
+            Ok(Some(p)) => p,
+            Ok(None) => return Ok(()),
             Err(symphonia::core::errors::Error::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(()),
             Err(e) => return Err(e.into()),
         };
-        if packet.track_id() != track.id {
+        if packet.track_id != track.id {
             continue;
         }
         let decoded = match decoder.decode(&packet) {
@@ -151,17 +153,12 @@ fn play(agent: &ureq::Agent, buf: &StreamBuf, url: &str) -> anyhow::Result<()> {
             Err(symphonia::core::errors::Error::DecodeError(_)) => continue,
             Err(e) => return Err(e.into()),
         };
-        let spec = *decoded.spec();
-        let ch = spec.channels.count().max(1);
-        let sb = match &mut samples {
-            Some(s) if s.capacity() >= decoded.capacity() * ch => s,
-            _ => samples.insert(SampleBuffer::new(decoded.capacity() as u64, spec)),
-        };
-        sb.copy_interleaved_ref(decoded);
-        let data = sb.samples();
+        let rate = decoded.spec().rate();
+        let ch = decoded.spec().channels().count().max(1);
+        decoded.copy_to_vec_interleaved(&mut samples);
         buf.push(
-            spec.rate,
-            data.chunks_exact(ch).map(|f| if ch >= 2 { [f[0], f[1]] } else { [f[0], f[0]] }),
+            rate,
+            samples.chunks_exact(ch).map(|f| if ch >= 2 { [f[0], f[1]] } else { [f[0], f[0]] }),
         );
         let now = {
             let t = title.lock();

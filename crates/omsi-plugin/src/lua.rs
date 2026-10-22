@@ -15,7 +15,8 @@
 use crate::api::{self, runtime, Binding, CallError, Ctx, PluginState, Value};
 use crate::ui::{self, SharedUi};
 use crate::PluginIo;
-use mlua::{ChunkMode, Function, HookTriggers, Lua, LuaOptions, MultiValue, StdLib, Table, VmState};
+use mlua::chunk::ChunkMode;
+use mlua::{Function, HookTriggers, Lua, LuaOptions, MultiValue, StdLib, Table, VmState};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -363,7 +364,7 @@ impl LuaBinding {
                     Err(mlua::Error::runtime(format!("the plugin ran longer than {} ms and was stopped", runtime::CALL_BUDGET_MS)))
                 }
                 _ => Ok(VmState::Continue),
-            });
+            })?;
         }
         let b = LuaBinding { by_id: lua.create_table()?, by_fn: lua.create_table()?, counts: RefCell::new(HashMap::new()), fresh: RefCell::new(Vec::new()), next: Cell::new(1), depth: Cell::new(0), deadline, overran, globals: g.clone(), lua };
         b.bind(p)?;

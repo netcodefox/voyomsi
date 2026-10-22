@@ -18,7 +18,7 @@ const QUEUE_SECS: usize = 1;
 /// Names of the input devices, for the settings.
 pub fn input_devices() -> Vec<String> {
     let host = cpal::default_host();
-    host.input_devices().map(|d| d.filter_map(|d| d.name().ok()).collect()).unwrap_or_default()
+    host.input_devices().map(|d| d.filter_map(|d| d.description().ok()).map(|d| d.name().to_string()).collect()).unwrap_or_default()
 }
 
 /// Downmix to mono and bring a device's rate to 48 kHz (linear interpolation up, averaging
@@ -76,15 +76,15 @@ fn build<T: SizedSample + Send + 'static>(
     device: &cpal::Device,
     config: &cpal::StreamConfig,
     queue: Arc<Mutex<VecDeque<f32>>>,
-) -> Result<cpal::Stream, cpal::BuildStreamError>
+) -> Result<cpal::Stream, cpal::Error>
 where
     f32: FromSample<T>,
 {
-    let mut conv = Converter::new(config.sample_rate.0, config.channels as usize);
+    let mut conv = Converter::new(config.sample_rate, config.channels as usize);
     let mut scratch = Vec::new();
     let mut floats = Vec::new();
     device.build_input_stream(
-        config,
+        config.clone(),
         move |data: &[T], _| {
             floats.clear();
             floats.extend(data.iter().map(|s| s.to_sample::<f32>()));
@@ -108,11 +108,11 @@ impl Capture {
     pub fn open(name: &str) -> Result<Capture, String> {
         let host = cpal::default_host();
         let device = (!name.is_empty())
-            .then(|| host.input_devices().ok().and_then(|mut d| d.find(|d| d.name().ok().as_deref() == Some(name))))
+            .then(|| host.input_devices().ok().and_then(|mut d| d.find(|d| d.description().ok().is_some_and(|x| x.name() == name))))
             .flatten()
             .or_else(|| host.default_input_device())
             .ok_or_else(|| "no microphone found".to_string())?;
-        let label = device.name().unwrap_or_default();
+        let label = device.description().map(|d| d.name().to_string()).unwrap_or_default();
         let supported = device.default_input_config().map_err(|e| format!("microphone {label}: {e}"))?;
         let format = supported.sample_format();
         let config: cpal::StreamConfig = supported.into();
@@ -128,7 +128,7 @@ impl Capture {
         }
         .map_err(|e| format!("microphone {label}: {e}"))?;
         stream.play().map_err(|e| format!("microphone {label}: {e}"))?;
-        log::info!("voice: microphone {label} open ({} Hz, {} channel(s))", config.sample_rate.0, config.channels);
+        log::info!("voice: microphone {label} open ({} Hz, {} channel(s))", config.sample_rate, config.channels);
         Ok(Capture { _stream: stream, queue, device: label })
     }
 
