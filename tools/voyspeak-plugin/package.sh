@@ -1,5 +1,5 @@
 #!/bin/sh
-# Packs the plugin as the ZIP GreenTeaSpeak installs (Extensions -> Plugins -> Install ZIP...).
+# Packs the plugin as the ZIP VoySpeak installs (Extensions -> Plugins -> Install ZIP...).
 set -e
 cd "$(dirname "$0")"
 out="${1:-voyomsi-voice.zip}"

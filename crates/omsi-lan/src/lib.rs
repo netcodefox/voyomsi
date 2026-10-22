@@ -15,7 +15,7 @@ pub mod commands;
 pub mod config;
 pub mod game;
 pub mod gateway;
-pub mod greentea;
+pub mod voyspeak;
 pub mod host;
 mod join;
 pub mod mirror;

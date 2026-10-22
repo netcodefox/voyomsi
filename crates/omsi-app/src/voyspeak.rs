@@ -1,9 +1,9 @@
-//! Positional voice in multiplayer through GreenTeaSpeak, the way SaltyChat does it for FiveM,
+//! Positional voice in multiplayer through VoySpeak, the way SaltyChat does it for FiveM,
 //! beside the built-in voice chat (`voice_chat`): the game's link to VoyOMSI's plugin.
 //!
-//! GreenTeaSpeak 2 (a TeamSpeak-style voice client, <https://greenteaspeak.de>) runs plugins
+//! VoySpeak (a TeamSpeak-style voice client, <https://voyspeak.com>) runs plugins
 //! with a 3D voice API (`ctx.voice.setListenerPose` / `setClientPose`). VoyOMSI's plugin
-//! (`tools/greenteaspeak-plugin`) listens on `127.0.0.1:38088`; the game connects to it and
+//! (`tools/voyspeak-plugin`) listens on `127.0.0.1:38088`; the game connects to it and
 //! sends one JSON object a line:
 //!
 //! - `hello`: first, the key of `~/.voyomsi/voice-plugin.key` (made by the game, read by the
@@ -22,10 +22,10 @@
 //! - `reset`: the session is over: 3D voice off, the user's nickname and channel as before.
 //!
 //! The plugin answers with `state` (in the channel, or what is wrong), `talk` (who speaks now)
-//! and `mute`. The session's voice server is the host's to name (`omsi_lan::greentea`).
+//! and `mute`. The session's voice server is the host's to name (`omsi_lan::voyspeak`).
 
 use glam::DVec3;
-use omsi_lan::greentea::{nickname, GtsServer};
+use omsi_lan::voyspeak::{nickname, VoySpeakServer};
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpStream};
@@ -41,7 +41,7 @@ const MUFFLED: f32 = 0.35;
 const SEND_EVERY: f32 = 0.1;
 const ASK_EVERY: f32 = 4.0;
 const ASK_TRIES: u32 = 8;
-/// "Start GreenTeaSpeak ..." is on the HUD this long (s) while the plugin is not there.
+/// "Start VoySpeak ..." is on the HUD this long (s) while the plugin is not there.
 const HINT_SECS: f32 = 10.0;
 /// Lines waiting for the plugin: beyond this many (a plugin that stopped reading) the
 /// newest are dropped rather than piled up.
@@ -80,7 +80,7 @@ fn plugin_key(path: &Path) -> Option<String> {
     match o.open(path).and_then(|mut f| f.write_all(key.as_bytes())) {
         Ok(()) => Some(key),
         Err(e) => {
-            log::warn!("GreenTeaSpeak: cannot write the plugin's key {}: {e}", path.display());
+            log::warn!("VoySpeak: cannot write the plugin's key {}: {e}", path.display());
             None
         }
     }
@@ -114,7 +114,7 @@ enum Event {
 }
 
 /// The link to the plugin: a thread keeps a TCP connection to it, made again whenever it
-/// breaks (the plugin starts after the game, GreenTeaSpeak is restarted).
+/// breaks (the plugin starts after the game, VoySpeak is restarted).
 struct Link {
     tx: SyncSender<String>,
     rx: Receiver<Event>,
@@ -124,7 +124,7 @@ impl Link {
     fn start(addr: SocketAddr, key: Option<PathBuf>) -> Option<Link> {
         let (tx, out_rx) = mpsc::sync_channel::<String>(QUEUE);
         let (ev_tx, rx) = mpsc::channel::<Event>();
-        std::thread::Builder::new().name("greenteaspeak".into()).spawn(move || link_thread(addr, key, out_rx, ev_tx)).ok()?;
+        std::thread::Builder::new().name("voyspeak".into()).spawn(move || link_thread(addr, key, out_rx, ev_tx)).ok()?;
         Some(Link { tx, rx })
     }
 }
@@ -149,7 +149,7 @@ fn link_thread(addr: SocketAddr, key_file: Option<PathBuf>, out: Receiver<String
         // (read each time: the file may have been made or replaced meanwhile)
         let Some(key) = key_file.as_deref().and_then(plugin_key) else {
             if !told_missing {
-                log::warn!("GreenTeaSpeak: no key for the plugin (no home directory?)");
+                log::warn!("VoySpeak: no key for the plugin (no home directory?)");
                 told_missing = true;
             }
             if !idle(&out, RECONNECT) {
@@ -161,7 +161,7 @@ fn link_thread(addr: SocketAddr, key_file: Option<PathBuf>, out: Receiver<String
             Ok(s) => s,
             Err(e) => {
                 if !told_missing {
-                    log::info!("GreenTeaSpeak: no plugin at {addr} ({e}); trying again every few seconds");
+                    log::info!("VoySpeak: no plugin at {addr} ({e}); trying again every few seconds");
                     told_missing = true;
                 }
                 // (lines for a plugin that is not there are dropped; the game stops the
@@ -209,7 +209,7 @@ fn link_thread(addr: SocketAddr, key_file: Option<PathBuf>, out: Receiver<String
                 }
             }
             if !welcomed && since.elapsed() > HELLO_TIMEOUT {
-                refused = Some("the VoyOMSI plugin in GreenTeaSpeak does not answer (an older version? install it again)".into());
+                refused = Some("the VoyOMSI plugin in VoySpeak does not answer (an older version? install it again)".into());
                 break 'link true;
             }
             // what the plugin says
@@ -221,7 +221,7 @@ fn link_thread(addr: SocketAddr, key_file: Option<PathBuf>, out: Receiver<String
                             Some("welcome") if !welcomed => {
                                 welcomed = true;
                                 told_refused.clear();
-                                log::info!("GreenTeaSpeak: linked to the plugin at {addr}");
+                                log::info!("VoySpeak: linked to the plugin at {addr}");
                                 if events.send(Event::Linked).is_err() {
                                     break 'link false;
                                 }
@@ -252,14 +252,14 @@ fn link_thread(addr: SocketAddr, key_file: Option<PathBuf>, out: Receiver<String
         match refused {
             Some(r) => {
                 if r != told_refused {
-                    log::warn!("GreenTeaSpeak: {r}");
+                    log::warn!("VoySpeak: {r}");
                     told_refused = r.clone();
                 }
                 if events.send(Event::Refused(r)).is_err() {
                     return;
                 }
             }
-            None if welcomed => log::info!("GreenTeaSpeak: the plugin went away"),
+            None if welcomed => log::info!("VoySpeak: the plugin went away"),
             None => {}
         }
         if !idle(&out, RECONNECT) {
@@ -268,7 +268,7 @@ fn link_thread(addr: SocketAddr, key_file: Option<PathBuf>, out: Receiver<String
     }
 }
 
-/// What the game knows of the GreenTeaSpeak voice.
+/// What the game knows of the VoySpeak voice.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct Status {
     /// The plugin is there.
@@ -308,8 +308,8 @@ pub(crate) struct Listener {
     pub radio_keyed: bool,
 }
 
-/// The game's side of the GreenTeaSpeak voice during a session.
-pub(crate) struct GreenTea {
+/// The game's side of the VoySpeak voice during a session.
+pub(crate) struct VoySpeak {
     link: Option<Link>,
     addr: SocketAddr,
     /// The file of the key the plugin knows the game by (`key_path`).
@@ -320,12 +320,12 @@ pub(crate) struct GreenTea {
     /// seconds of it only).
     unlinked_t: f32,
     /// The host's voice server: None until it answered, Some(None) for none.
-    server: Option<Option<GtsServer>>,
+    server: Option<Option<VoySpeakServer>>,
     asked: u32,
     ask_t: f32,
     send_t: f32,
     /// What `initiate` last told the plugin (sent again when it changes or the link is new).
-    initiated: Option<(GtsServer, String)>,
+    initiated: Option<(VoySpeakServer, String)>,
     /// The positions go to the plugin relative to this point: a map's coordinates run into
     /// the millions of metres, more than a 32-bit float of an audio engine keeps to the
     /// centimetre.
@@ -335,11 +335,11 @@ pub(crate) struct GreenTea {
     pub status: Status,
 }
 
-impl GreenTea {
+impl VoySpeak {
     /// The voice of a session (`port` 0: the default).
-    pub(crate) fn new(port: u16) -> GreenTea {
+    pub(crate) fn new(port: u16) -> VoySpeak {
         let port = if port == 0 { DEFAULT_PORT } else { port };
-        GreenTea {
+        VoySpeak {
             link: None,
             addr: SocketAddr::from(([127, 0, 0, 1], port)),
             key: key_path(),
@@ -357,11 +357,11 @@ impl GreenTea {
     }
 
     /// The host's voice server is known (we host, or its answer came).
-    pub(crate) fn set_server(&mut self, server: Option<GtsServer>) {
+    pub(crate) fn set_server(&mut self, server: Option<VoySpeakServer>) {
         if self.server.as_ref() != Some(&server) {
             match &server {
-                Some(s) => log::info!("GreenTeaSpeak: the session talks on voice server '{}' channel '{}' (range {} m)", s.server_uid, s.channel, s.range),
-                None => log::info!("GreenTeaSpeak: the session names no voice server"),
+                Some(s) => log::info!("VoySpeak: the session talks on voice server '{}' channel '{}' (range {} m)", s.server_uid, s.channel, s.range),
+                None => log::info!("VoySpeak: the session names no voice server"),
             }
         }
         self.server = Some(server);
@@ -373,12 +373,12 @@ impl GreenTea {
     }
 
     /// The voice server, once known.
-    pub(crate) fn server(&self) -> Option<&GtsServer> {
+    pub(crate) fn server(&self) -> Option<&VoySpeakServer> {
         self.server.as_ref().and_then(|s| s.as_ref())
     }
 
     /// Ask the host for its voice server now and then until it answers (a host without
-    /// GreenTeaSpeak never does: given up after a while). True when it is time to ask.
+    /// VoySpeak never does: given up after a while). True when it is time to ask.
     pub(crate) fn should_ask(&mut self, dt: f32) -> bool {
         if self.server.is_some() || self.asked >= ASK_TRIES {
             return false;
@@ -488,9 +488,9 @@ impl GreenTea {
                 self.status.problem = Some(s("error")).filter(|e| !e.is_empty());
                 if was.in_channel != self.status.in_channel || was.problem != self.status.problem {
                     match &self.status.problem {
-                        Some(p) => log::warn!("GreenTeaSpeak: {p}"),
-                        None if self.status.in_channel => log::info!("GreenTeaSpeak: in the session's voice channel"),
-                        None => log::info!("GreenTeaSpeak: not in the session's voice channel"),
+                        Some(p) => log::warn!("VoySpeak: {p}"),
+                        None if self.status.in_channel => log::info!("VoySpeak: in the session's voice channel"),
+                        None => log::info!("VoySpeak: not in the session's voice channel"),
                     }
                 }
             }
@@ -513,35 +513,35 @@ impl GreenTea {
         let tr = |s: &str| omsi_ui::tr(s).into_owned();
         if !self.status.linked {
             if let Some(r) = &self.refused {
-                return Some(format!("GreenTeaSpeak: {r}"));
+                return Some(format!("VoySpeak: {r}"));
             }
             // (for the first seconds: a player who does not want to talk is not told so all
             // session long)
-            return (self.unlinked_t < HINT_SECS).then(|| tr("Voice: start GreenTeaSpeak with the VoyOMSI plugin to talk"));
+            return (self.unlinked_t < HINT_SECS).then(|| tr("Voice: start VoySpeak with the VoyOMSI plugin to talk"));
         }
         if let Some(p) = &self.status.problem {
-            return Some(format!("GreenTeaSpeak: {p}"));
+            return Some(format!("VoySpeak: {p}"));
         }
         if !self.status.in_channel {
-            return Some(tr("Voice: joining the GreenTeaSpeak channel ..."));
+            return Some(tr("Voice: joining the VoySpeak channel ..."));
         }
-        self.status.mic_muted.then(|| tr("Voice: your GreenTeaSpeak microphone is muted"))
+        self.status.mic_muted.then(|| tr("Voice: your VoySpeak microphone is muted"))
     }
 
-    /// The players talking in GreenTeaSpeak now (their nicknames), for the talker list.
+    /// The players talking in VoySpeak now (their nicknames), for the talker list.
     pub(crate) fn talkers(&self) -> impl Iterator<Item = &str> {
         self.talking.iter().map(String::as_str)
     }
 }
 
-impl Drop for GreenTea {
+impl Drop for VoySpeak {
     fn drop(&mut self) {
         // (the plugin switches 3D voice off; the thread ends when the sender goes)
         let _ = self.send(json!({ "type": "reset" }));
     }
 }
 
-/// The camera's yaw as SaltyChat's `Rotation` (and GreenTeaSpeak's `yawDeg`) has it: GTA's
+/// The camera's yaw as SaltyChat's `Rotation` (and VoySpeak's `yawDeg`) has it: GTA's
 /// heading, 0 = north and counter-clockwise, -180..180.
 fn saltychat_yaw(yaw: f32) -> f32 {
     let r = (-yaw + 180.0).rem_euclid(360.0) - 180.0;
@@ -578,8 +578,8 @@ mod tests {
     use std::io::Read;
     use std::net::TcpListener;
 
-    fn server() -> GtsServer {
-        GtsServer { server_uid: "AbC=".into(), channel: "5".into(), password: String::new(), range: 20.0, radio: true }
+    fn server() -> VoySpeakServer {
+        VoySpeakServer { server_uid: "AbC=".into(), channel: "5".into(), password: String::new(), range: 20.0, radio: true }
     }
 
     #[test]
@@ -600,7 +600,7 @@ mod tests {
     fn talks_to_a_plugin() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let dir = std::env::temp_dir().join(format!("voyomsi-gts-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("voyomsi-voyspeak-test-{}", std::process::id()));
         let key_file = dir.join("voice-plugin.key");
         let plugin = std::thread::spawn(move || {
             let (s, _) = listener.accept().unwrap();
@@ -623,7 +623,7 @@ mod tests {
             let _ = r.get_mut().read_to_string(&mut rest);
             lines
         });
-        let mut g = GreenTea::new(port);
+        let mut g = VoySpeak::new(port);
         g.key = Some(key_file.clone());
         g.set_server(Some(server()));
         let ear = Listener { at: DVec3::new(1000.0, 2000.0, 3.0), yaw: 90.0, inside: None, on_radio: true, radio_keyed: false };

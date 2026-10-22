@@ -377,7 +377,7 @@ pub(crate) fn carry_out(app: &mut App, from: u32, command: Command) {
         // (a game hosting by code sent a notice: the player's game showed it)
         Command::NotifySeen(id) => log::info!("LAN: player {from} saw notice {id}"),
         // (the session's own: `lan_command`)
-        Command::Trigger(_) | Command::VoiceAsked | Command::Voice(_) | Command::VoiceMuted(_) | Command::GtsAsked | Command::Gts(_) => {}
+        Command::Trigger(_) | Command::VoiceAsked | Command::Voice(_) | Command::VoiceMuted(_) | Command::VoySpeakAsked | Command::VoySpeak(_) => {}
     }
 }
 

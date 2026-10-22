@@ -9,6 +9,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 // Shared test application; replace centrally if a different application is used for release.
 pub const DEFAULT_APP_ID: &str = "1555504817110122526";
+/// The button under the presence: where others get VoyOMSI.
+const BUTTON: (&str, &str) = ("Get VoyOMSI", "https://github.com/netcodefox/voyomsi/releases/latest");
 const MAX_FRAME: usize = 64 * 1024;
 #[cfg(not(test))]
 const POLL: Duration = Duration::from_millis(100);
@@ -360,8 +362,10 @@ fn activity(presence: &Presence, started: u64, with_assets: bool) -> serde_json:
         "state": presence.state.chars().take(120).collect::<String>(),
         "timestamps": { "start": started },
     });
+    // (the fallback for an application without the logo asset leaves the button out as well)
     if with_assets {
         activity["assets"] = serde_json::json!({ "large_image": "logo", "large_text": presence.large_text.chars().take(120).collect::<String>() });
+        activity["buttons"] = serde_json::json!([{ "label": BUTTON.0, "url": BUTTON.1 }]);
     }
     activity
 }
@@ -859,7 +863,9 @@ mod tests {
         assert_eq!(a["details"].as_str().unwrap().chars().count(), 120);
         assert_eq!(a["timestamps"]["start"], 1234);
         assert_eq!(a["assets"]["large_image"], "logo");
+        assert_eq!(a["buttons"][0]["label"], "Get VoyOMSI");
         assert!(activity(&p, 1234, false).get("assets").is_none());
+        assert!(activity(&p, 1234, false).get("buttons").is_none());
     }
 
     #[test]

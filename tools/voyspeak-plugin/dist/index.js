@@ -1,7 +1,7 @@
-// VoyOMSI Voice - a GreenTeaSpeak 2 plugin (@greentea/plugin-sdk) for positional voice in
+// VoyOMSI Voice - a VoySpeak plugin (plugin SDK) for positional voice in
 // VoyOMSI multiplayer, the way SaltyChat does it for FiveM, plus a map-wide bus radio.
 //
-// The game (crates/omsi-app/src/greentea.rs) connects to 127.0.0.1:38088 and sends one JSON
+// The game (crates/omsi-app/src/voyspeak.rs) connects to 127.0.0.1:38088 and sends one JSON
 // object a line:
 //   hello     {key}: first, the key of ~/.voyomsi/voice-plugin.key (the game makes it).
 //             Whatever else connects (a web page posting to the port, another program) is
@@ -127,7 +127,7 @@ function report() {
   broadcast({ type: "state", connected: true, inChannel, error: problem });
 }
 
-/** A channel as GreenTeaSpeak takes it: an id when it is a number, else its name. */
+/** A channel as VoySpeak takes it: an id when it is a number, else its name. */
 function channelRef(channel) {
   return /^\d+$/.test(String(channel)) ? Number(channel) : String(channel);
 }
@@ -139,7 +139,7 @@ async function initiate() {
   try {
     const state = await ctx.connection.getState();
     if (!state.connected) {
-      problem = "GreenTeaSpeak is not connected to a voice server";
+      problem = "VoySpeak is not connected to a voice server";
       return report();
     }
     // (a session that names no voice server would move the user on whichever one they are
@@ -150,7 +150,7 @@ async function initiate() {
     }
     const uid = await ctx.connection.getServerUid();
     if (uid !== session.serverUid) {
-      problem = "GreenTeaSpeak is on another voice server than the session's";
+      problem = "VoySpeak is on another voice server than the session's";
       return report();
     }
     if (!before) before = await whereAmI();
@@ -299,7 +299,7 @@ async function placePlayers(m) {
   posed = now;
 }
 
-// The game sends ten positions a second; GreenTeaSpeak's calls are asynchronous. One of each
+// The game sends ten positions a second; VoySpeak's calls are asynchronous. One of each
 // kind is worked on at a time and only the latest waiting one is kept.
 const latest = { self: null, players: null };
 const busy = { self: false, players: false };
@@ -365,7 +365,7 @@ function onHello(sock, line) {
     return false;
   }
   if (game && !game.destroyed) {
-    send(sock, { type: "refused", error: "another VoyOMSI game is already linked to GreenTeaSpeak" });
+    send(sock, { type: "refused", error: "another VoyOMSI game is already linked to VoySpeak" });
     sock.end();
     return false;
   }
@@ -443,7 +443,7 @@ export default {
         if (ev.connected) initiate();
         else {
           inChannel = false;
-          problem = "GreenTeaSpeak is not connected to a voice server";
+          problem = "VoySpeak is not connected to a voice server";
           report();
         }
       }),

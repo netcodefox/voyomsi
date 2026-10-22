@@ -2134,8 +2134,8 @@ pub fn settings_from_text_on(text: Option<&str>, phone: bool) -> Value {
     // voice chat in multiplayer: off until switched on (the microphone is then used with a
     // talk key held, or open)
     v["voice_enabled"] = json!(false);
-    // voice through GreenTeaSpeak's VoyOMSI plugin, in a session whose host names a server for it
-    v["greenteaspeak"] = json!(true);
+    // voice through VoySpeak's VoyOMSI plugin, in a session whose host names a server for it
+    v["voyspeak"] = json!(true);
     v["voice_mode"] = json!("ptt");
     v["voice_mic_gain"] = json!(1.0);
     v["voice_threshold_db"] = json!(-45);
@@ -2260,7 +2260,9 @@ pub fn settings_from_text_on(text: Option<&str>, phone: bool) -> Value {
             "voice_volume" | "voice_volume_nearby" | "voice_volume_radio" => v[&k] = json!(val.parse::<f64>().ok().filter(|x| x.is_finite()).map(|x| x.clamp(0.0, 2.0)).unwrap_or(1.0)),
             "voice_threshold_db" => v[&k] = json!(val.parse::<f64>().ok().filter(|x| x.is_finite()).map(|x| x.clamp(-80.0, -10.0).round() as i64).unwrap_or(-45)),
             "voice_range" => v[&k] = json!(val.parse::<f64>().ok().filter(|x| x.is_finite()).map(|x| x.clamp(5.0, 1000.0).round() as i64).unwrap_or(75)),
-            "voice_enabled" | "voice_talker_list" | "voice_all_off" | "greenteaspeak" => v[&k] = json!(b(val)),
+            "voice_enabled" | "voice_talker_list" | "voice_all_off" | "voyspeak" => v[&k] = json!(b(val)),
+            // (1.0.1 named it after GreenTeaSpeak)
+            "greenteaspeak" => v["voyspeak"] = json!(b(val)),
             "resolution" | "window_size" => v["resolution"] = json!(resolution_text(val)),
             "graphics_api" => v[&k] = json!(match val.to_ascii_lowercase().as_str() { "vulkan" => "vulkan", "dx12" => "dx12", "gl" => "gl", "angle" => "angle", _ => "auto" }),
             "shadow_casters" => v[&k] = json!(if val.eq_ignore_ascii_case("omsi") { "omsi" } else { "all" }),
@@ -2679,7 +2681,7 @@ pub fn settings_to_text(v: &Value, old: Option<&str>) -> String {
             b("voice_talker_list", true),
             b("voice_all_off", false),
         ));
-        text.push_str(&format!("greenteaspeak={}\n", b("greenteaspeak", true)));
+        text.push_str(&format!("voyspeak={}\n", b("voyspeak", true)));
     }
     text.push_str(&format!("mouse_pedals={}\n", b("mouse_pedals", true)));
     text.push_str(&format!("key_pedal_speed={}\n", f("key_pedal_speed", 1.0).clamp(0.25, 2.0)));

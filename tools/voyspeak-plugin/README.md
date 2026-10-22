@@ -1,20 +1,20 @@
-# VoyOMSI Voice (GreenTeaSpeak plugin)
+# VoyOMSI Voice (VoySpeak plugin)
 
-Positional voice for VoyOMSI multiplayer through [GreenTeaSpeak 2](https://greenteaspeak.de),
+Positional voice for VoyOMSI multiplayer through [VoySpeak](https://voyspeak.com),
 the way SaltyChat does it for FiveM: you hear the other players from where they stand or
 sit, quieter with distance, and muffled when one of you is in a bus and the other is not.
 
 ## For players
 
 1. Pack the plugin: `./package.sh` (makes `voyomsi-voice.zip`).
-2. In GreenTeaSpeak: **Options → Extensions → Plugins → Install ZIP…** and choose it.
-3. Connect GreenTeaSpeak to the voice server your VoyOMSI server names, then join the
+2. In VoySpeak: **Options → Extensions → Plugins → Install ZIP…** and choose it.
+3. Connect VoySpeak to the voice server your VoyOMSI server names, then join the
    VoyOMSI server. The plugin moves you into the in-game channel and renames you
    `<name> #<player id>` so that the other games know who is who.
 
 VoyOMSI shows a line on the HUD while the voice chat is not ready (on another voice
-server, microphone muted; GreenTeaSpeak not running: for the first ten seconds only). *Settings → Sound → Voice through
-GreenTeaSpeak* switches it off in the game.
+server, microphone muted; VoySpeak not running: for the first ten seconds only). *Settings → Sound → Voice through
+VoySpeak* switches it off in the game.
 
 ## For server owners
 
@@ -28,11 +28,11 @@ voice_range = 20
 voice_radio = 1
 ```
 
-`voice_server_uid` is the unique id from GreenTeaSpeak's server info panel (needed: the
+`voice_server_uid` is the unique id from VoySpeak's server info panel (needed: the
 plugin moves nobody on a voice server the session does not name), `voice_channel` the
 in-game channel's id or name (empty: no voice chat), `voice_range` how far a player is heard
 in metres. `voice_radio` (default on) gives drivers a bindable map-wide bus radio on top of
-proximity voice: taking a bus puts them on it; hold the radio key (Controls, B by default,
+proximity voice: taking a bus puts them on it; hold the radio key (Controls: B, or H where B is the hazard lights,
 the same as the built-in voice chat's radio) to transmit to every driver on the map while
 people nearby still hear them through proximity. The channel's password is sent to every
 player who joins. `voice_range` and `voice_radio` count for the built-in voice chat as well
@@ -62,6 +62,6 @@ Positions are metres, z up, relative to a point near where the game started (map
 run into the millions). The plugin answers with `state` (`inChannel`, `error`), `talk`
 (`nickname`, `talking`, `radio`) and `mute` (`microphoneMuted`, `soundMuted`).
 
-The plugin is plain JavaScript (ES module, `node:net`, no dependencies): GreenTeaSpeak's
-`@greentea/plugin-sdk` is only needed for its types when writing a plugin. The game's side is
-`crates/omsi-app/src/greentea.rs`.
+The plugin is plain JavaScript (ES module, `node:net`, no dependencies): VoySpeak's
+`@voyspeak/plugin-sdk` is only needed for its types when writing a plugin. The game's side is
+`crates/omsi-app/src/voyspeak.rs`.

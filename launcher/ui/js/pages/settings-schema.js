@@ -323,7 +323,7 @@ const sound = {
         { type: 'slider', key: 'voice_range', label: 'Nearby voice range when you host', min: 10, max: 300, step: 5, def: 75, format: (v) => `${v.toFixed(0)} m`, store: round, when: (s) => !!s.voice_enabled },
         { type: 'toggle', key: 'voice_talker_list', label: 'Show who is talking', when: (s) => !!s.voice_enabled },
         { type: 'toggle', key: 'voice_all_off', label: "Everybody else's voice off", help: 'Single players are muted in the pause menu, under Players.', when: (s) => !!s.voice_enabled },
-        { type: 'toggle', key: 'greenteaspeak', label: 'Voice through GreenTeaSpeak', help: 'On a server that names a GreenTeaSpeak voice server: start GreenTeaSpeak with the VoyOMSI plugin (tools/greenteaspeak-plugin) and you are moved into its channel and hear the other players from where they stand. The radio key (B) is the bus radio there.' },
+        { type: 'toggle', key: 'voyspeak', label: 'Voice through VoySpeak', help: 'On a server that names a VoySpeak voice server: start VoySpeak with the VoyOMSI plugin (tools/voyspeak-plugin) and you are moved into its channel and hear the other players from where they stand. The radio key (see Controls) is the bus radio there.' },
       ],
     },
     {

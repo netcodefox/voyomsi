@@ -6,6 +6,19 @@ promoted to stable releases (see [docs/VERSIONING.md](docs/VERSIONING.md)); the 
 
 > VoyOMSI is a fork of openOMSI; the entries below up to the fork were written for openOMSI.
 
+## Unreleased
+
+### VoyOMSI
+
+- **GreenTeaSpeak is now VoySpeak** ([voyspeak.com](https://voyspeak.com)): the setting is
+  *Settings → Sound → Voice through VoySpeak* (1.0.1's `greenteaspeak` is read as well), the
+  plugin is in `tools/voyspeak-plugin`, and a host asks with `voyspeak?` - a 1.0.1 game and a
+  newer one do not find each other's VoySpeak server; update both.
+- **The radio key has a key again**: OMSI's own key file gives B to the hazard lights, so the
+  voice chat's radio was left without one. It is H now (or J), also where it was saved unbound.
+- **Discord**: the presence has a *Get VoyOMSI* button; `assets/discord/logo.png` is the picture
+  for a Discord application of VoyOMSI's own (asset name `logo`).
+
 ## 1.0.1 - 2026-10-22
 
 ### VoyOMSI

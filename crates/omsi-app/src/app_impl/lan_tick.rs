@@ -98,7 +98,7 @@ impl App {
         crate::admin_panel::tick(self);
         crate::player_list::tick(self);
         self.tick_voice(dt);
-        self.tick_greentea(dt);
+        self.tick_voyspeak(dt);
     }
 
     /// A command another player's game sent ours (`LanSession::command`): read by the session
@@ -144,15 +144,15 @@ impl App {
                     v.set_policy(policy);
                 }
             }
-            // the session's GreenTeaSpeak server: asked of the host (a dedicated server answers
+            // the session's VoySpeak server: asked of the host (a dedicated server answers
             // in `omsi_lan::admin`), told by it
-            Command::GtsAsked => {
+            Command::VoySpeakAsked => {
                 if let Some(l) = self.net.lan.as_mut().filter(|l| l.role == omsi_net::Role::Host) {
-                    l.command(from, &omsi_lan::greentea::GtsServer::command(omsi_lan::greentea::hosted().as_ref()));
+                    l.command(from, &omsi_lan::voyspeak::VoySpeakServer::command(omsi_lan::voyspeak::hosted().as_ref()));
                 }
             }
-            Command::Gts(server) => {
-                if let Some(g) = self.sound.greentea.as_mut() {
+            Command::VoySpeak(server) => {
+                if let Some(g) = self.sound.voyspeak.as_mut() {
                     g.set_server(server);
                 }
             }

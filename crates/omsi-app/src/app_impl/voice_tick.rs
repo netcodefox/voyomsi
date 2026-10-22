@@ -42,33 +42,33 @@ impl App {
         chat.tick(dt, &self.settings, lan, &self.net.remotes, self.sound.audio.as_ref(), listener, my_bus, my_inside, held, &self.sound.voice_mutes);
     }
 
-    /// The GreenTeaSpeak voice (`greentea`), once a frame of a session: started with it when
+    /// The VoySpeak voice (`voyspeak`), once a frame of a session: started with it when
     /// the settings allow, the host's voice server asked for, the plugin told who is where.
     /// The radio key is the built-in voice chat's (`voice_radio`).
-    pub(super) fn tick_greentea(&mut self, dt: f32) {
+    pub(super) fn tick_voyspeak(&mut self, dt: f32) {
         // (a dedicated server has nobody to talk at its place; a joining game that lost its
         // host is in no session to talk in)
-        let live = self.settings.greenteaspeak && self.args.server.is_none() && self.net.lan.as_ref().is_some_and(|l| l.connected);
+        let live = self.settings.voyspeak && self.args.server.is_none() && self.net.lan.as_ref().is_some_and(|l| l.connected);
         if !live {
-            self.sound.greentea = None;
+            self.sound.voyspeak = None;
             return;
         }
         let radio_held = self.voice_key_held("voice_radio");
         let Some(lan) = self.net.lan.as_mut() else { return };
-        let g = self.sound.greentea.get_or_insert_with(|| crate::greentea::GreenTea::new(crate::greentea::DEFAULT_PORT));
+        let g = self.sound.voyspeak.get_or_insert_with(|| crate::voyspeak::VoySpeak::new(crate::voyspeak::DEFAULT_PORT));
         match lan.role {
             // (once: `hosted` reads voice.cfg)
-            omsi_net::Role::Host if !g.known() => g.set_server(omsi_lan::greentea::hosted()),
-            omsi_net::Role::Client if g.should_ask(dt) => lan.command(1, "gts?"),
+            omsi_net::Role::Host if !g.known() => g.set_server(omsi_lan::voyspeak::hosted()),
+            omsi_net::Role::Client if g.should_ask(dt) => lan.command(1, "voyspeak?"),
             _ => {}
         }
         let lan = &*lan;
         let my_bus = self.player.as_ref().map(|p| p.vehicle.position);
-        let others = crate::greentea::speakers(lan, &self.net.remotes, my_bus);
+        let others = crate::voyspeak::speakers(lan, &self.net.remotes, my_bus);
         let inside = if self.cam.in_cab { Some(lan.my_id) } else { self.net.inside_remote };
         // driving a bus (not on foot): on the company radio
         let on_radio = self.player.is_some() && !self.cam.ego;
-        let listener = self.camera.as_ref().map(|c| crate::greentea::Listener { at: c.position, yaw: c.yaw, inside, on_radio, radio_keyed: on_radio && radio_held });
+        let listener = self.camera.as_ref().map(|c| crate::voyspeak::Listener { at: c.position, yaw: c.yaw, inside, on_radio, radio_keyed: on_radio && radio_held });
         let me = (lan.my_name.clone(), lan.my_id);
         g.tick(dt, (&me.0, me.1), listener, &others);
     }

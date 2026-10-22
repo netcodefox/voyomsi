@@ -119,15 +119,15 @@ third process far from the speaker (`listen 900`) hears the radio and not a near
 distance shaping through a real (deviceless) mixer, routing by range, the relay's limits and
 a flood.
 
-## GreenTeaSpeak
+## VoySpeak
 
 Besides the built-in voice chat, a session can talk through
-[GreenTeaSpeak](https://greenteaspeak.de) and VoyOMSI's plugin for it
-([tools/greenteaspeak-plugin](../tools/greenteaspeak-plugin/README.md)), the way SaltyChat does
+[VoySpeak](https://voyspeak.com) and VoyOMSI's plugin for it
+([tools/voyspeak-plugin](../tools/voyspeak-plugin/README.md)), the way SaltyChat does
 it for FiveM. The host names the voice server: `voice_server_uid`, `voice_channel` and
 `voice_channel_password` in a dedicated server's `server.cfg`, or in `~/.voyomsi/voice.cfg`
-for a game that hosts. A player who runs GreenTeaSpeak with the plugin is moved into that
-channel when they join and hears the others from where they stand; the radio key (B) keys the
-bus radio there too. *Settings → Sound → Voice through GreenTeaSpeak* (on by default) switches
-it off in the game. The game's side is `crates/omsi-app/src/greentea.rs`, the session's
-(`gts?` / `gts …`) `crates/omsi-lan/src/greentea.rs`.
+for a game that hosts. A player who runs VoySpeak with the plugin is moved into that
+channel when they join and hears the others from where they stand; the radio key (B, or H where OMSI has B for the hazard lights) keys the
+bus radio there too. *Settings → Sound → Voice through VoySpeak* (on by default) switches
+it off in the game. The game's side is `crates/omsi-app/src/voyspeak.rs`, the session's
+(`voyspeak?` / `voyspeak …`) `crates/omsi-lan/src/voyspeak.rs`.

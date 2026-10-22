@@ -132,11 +132,16 @@ impl KeyboardCfg {
             self.game.push(KeyBinding { action: "pax_door_request".into(), scan_code: 31, modifier: KEY_CTRL | KEY_ALT });
         }
         // voice chat in multiplayer (hold to talk): nearby on V, the session-wide radio on B -
-        // when free, else unbound (the first radio key was X, #1230: a file that has it keeps it)
-        for (action, scan_code) in [("voice_nearby", 47), ("voice_radio", 48)] {
-            if !self.game.iter().any(|b| b.action.eq_ignore_ascii_case(action)) {
-                let free = !taken(&self, scan_code);
-                self.game.push(KeyBinding { action: action.into(), scan_code: if free { scan_code } else { 0 }, modifier: 0 });
+        // when free, else unbound (the first radio key was X, #1230: a file that has it keeps it).
+        // OMSI's own file gives B to the hazard lights and X to the scenery editor, so the radio
+        // had no key at all: then it is H, or J (both free in OMSI's file) - also for a file
+        // that was saved with the radio unbound that way.
+        for (action, keys) in [("voice_nearby", &[47][..]), ("voice_radio", &[48, 35, 36][..])] {
+            let key = keys.iter().copied().find(|&sc| !taken(&self, sc)).unwrap_or(0);
+            match self.game.iter_mut().find(|b| b.action.eq_ignore_ascii_case(action)) {
+                None => self.game.push(KeyBinding { action: action.into(), scan_code: key, modifier: 0 }),
+                Some(b) if action == "voice_radio" && b.scan_code == 0 => b.scan_code = key,
+                Some(_) => {}
             }
         }
         self
@@ -328,6 +333,17 @@ mod tests {
         let cfg = KeyboardCfg { vehicles: vec![taken], ..Default::default() }.with_game_defaults();
         assert_eq!(key(&cfg, "voice_nearby"), vec![(0, 0)]);
         assert_eq!(key(&cfg, "voice_radio"), vec![(48, 0)]);
+        // OMSI's own file: B is the hazard lights, so the radio goes on H - also in a file
+        // saved with the radio unbound; with H taken as well, on J
+        let hazard = KeyBinding { action: "blinker_warn_toggle".into(), scan_code: 48, modifier: 0 };
+        let cfg = KeyboardCfg { vehicles: vec![hazard.clone()], ..Default::default() }.with_game_defaults();
+        assert_eq!(key(&cfg, "voice_radio"), vec![(35, 0)]);
+        let unbound = KeyBinding { action: "voice_radio".into(), scan_code: 0, modifier: 0 };
+        let cfg = KeyboardCfg { vehicles: vec![hazard.clone()], game: vec![unbound], ..Default::default() }.with_game_defaults();
+        assert_eq!(key(&cfg, "voice_radio"), vec![(35, 0)]);
+        let h = KeyBinding { action: "horn".into(), scan_code: 35, modifier: 0 };
+        let cfg = KeyboardCfg { vehicles: vec![hazard, h], ..Default::default() }.with_game_defaults();
+        assert_eq!(key(&cfg, "voice_radio"), vec![(36, 0)]);
     }
 
     #[test]

@@ -16,7 +16,7 @@ mod admin_panel;
 mod auto_announce;
 mod player_list;
 mod voice_chat;
-mod greentea;
+mod voyspeak;
 use omsi_scene::check;
 use omsi_platform::discord;
 #[cfg(steam)]
@@ -550,9 +550,9 @@ pub(crate) fn make_app(mut args: Args, server_cfg: Option<server::ServerCfg>) ->
     if let (Some(l), Some(c)) = (lan.as_mut(), server_cfg.as_ref()) {
         l.set_voice_policy(c.voice);
     }
-    // ... and the GreenTeaSpeak server it names, which `gts?` is answered with
+    // ... and the VoySpeak server it names, which `voyspeak?` is answered with
     if let Some(c) = server_cfg.as_ref() {
-        omsi_lan::greentea::set_server(c.greentea.clone());
+        omsi_lan::voyspeak::set_server(c.voyspeak.clone());
     }
     let mut lan_game = lan::LanGame::default();
     if args.export_glb.is_none() && args.lan_join.is_some() {
@@ -800,7 +800,7 @@ fn assemble_app(args: Args, settings: settings::Settings) -> App {
             ambience: None,
             soundscape: None,
             voice: None,
-            greentea: None,
+            voyspeak: None,
             voice_mutes: crate::voice_chat::load_mutes(),
             foot_in: None,
             voices_waiting: Vec::new(),
