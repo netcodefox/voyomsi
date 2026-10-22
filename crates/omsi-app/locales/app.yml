@@ -70847,3 +70847,33 @@ _version: 2
   sv: "Rensa alla ruttpunkter"
   sr: "Obriši sve putne tačke"
   ka: "ყველა შუალედური წერტილის წაშლა"
+
+"Voice through VoySpeak":
+  de: "Sprachchat über VoySpeak"
+  es: "Chat de voz por VoySpeak"
+  fr: "Chat vocal via VoySpeak"
+
+"On a server that names a VoySpeak voice server: start VoySpeak with the VoyOMSI plugin (tools/voyspeak-plugin) and you are moved into its channel and hear the other players from where they stand. The radio key (see Controls) is the bus radio there.":
+  de: "Auf einem Server, der einen VoySpeak-Server nennt: Starte VoySpeak mit dem VoyOMSI-Plugin (tools/voyspeak-plugin), dann wirst du in dessen Kanal verschoben und hörst die anderen Spieler von dort, wo sie stehen. Die Funk-Taste (siehe Steuerung) ist dort der Busfunk."
+  es: "En un servidor que indica un servidor de VoySpeak: inicia VoySpeak con el plugin de VoyOMSI (tools/voyspeak-plugin) y entrarás en su canal y oirás a los demás jugadores desde donde están. La tecla de radio (ver Controles) es allí la radio del autobús."
+  fr: "Sur un serveur qui indique un serveur VoySpeak : lance VoySpeak avec le plugin VoyOMSI (tools/voyspeak-plugin) et tu es placé dans son canal et entends les autres joueurs là où ils se trouvent. La touche radio (voir Commandes) y est la radio du bus."
+
+"On a server that names a VoySpeak voice server, with VoySpeak and the VoyOMSI plugin running":
+  de: "Auf einem Server mit VoySpeak-Server, wenn VoySpeak mit dem VoyOMSI-Plugin läuft"
+  es: "En un servidor con servidor de VoySpeak, con VoySpeak y el plugin de VoyOMSI en marcha"
+  fr: "Sur un serveur avec un serveur VoySpeak, avec VoySpeak et le plugin VoyOMSI lancés"
+
+"Voice: start VoySpeak with the VoyOMSI plugin to talk":
+  de: "Sprache: Starte VoySpeak mit dem VoyOMSI-Plugin, um zu sprechen"
+  es: "Voz: inicia VoySpeak con el plugin de VoyOMSI para hablar"
+  fr: "Voix : lance VoySpeak avec le plugin VoyOMSI pour parler"
+
+"Voice: joining the VoySpeak channel ...":
+  de: "Sprache: Betrete den VoySpeak-Kanal ..."
+  es: "Voz: entrando en el canal de VoySpeak ..."
+  fr: "Voix : connexion au canal VoySpeak ..."
+
+"Voice: your VoySpeak microphone is muted":
+  de: "Sprache: Dein VoySpeak-Mikrofon ist stummgeschaltet"
+  es: "Voz: tu micrófono de VoySpeak está silenciado"
+  fr: "Voix : ton micro VoySpeak est coupé"

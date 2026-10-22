@@ -323,7 +323,6 @@ const sound = {
         { type: 'slider', key: 'voice_range', label: 'Nearby voice range when you host', min: 10, max: 300, step: 5, def: 75, format: (v) => `${v.toFixed(0)} m`, store: round, when: (s) => !!s.voice_enabled },
         { type: 'toggle', key: 'voice_talker_list', label: 'Show who is talking', when: (s) => !!s.voice_enabled },
         { type: 'toggle', key: 'voice_all_off', label: "Everybody else's voice off", help: 'Single players are muted in the pause menu, under Players.', when: (s) => !!s.voice_enabled },
-        { type: 'toggle', key: 'voyspeak', label: 'Voice through VoySpeak', help: 'On a server that names a VoySpeak voice server: start VoySpeak with the VoyOMSI plugin (tools/voyspeak-plugin) and you are moved into its channel and hear the other players from where they stand. The radio key (see Controls) is the bus radio there.' },
       ],
     },
     {
@@ -401,6 +400,7 @@ const general = {
         { type: 'toggle', key: 'machine_translation', label: 'Translate the remaining texts automatically (offline, downloads 620 MB once)' },
         { type: 'toggle', key: 'launcher_rest', label: 'The launcher rests while a game runs (gives the graphics card to the game)' },
         { type: 'toggle', key: 'discord_status', label: 'Discord Rich Presence', help: 'Shows the launcher or your map, bus, line and multiplayer status in Discord.' },
+        { type: 'toggle', key: 'voyspeak', label: 'Voice through VoySpeak', help: 'On a server that names a VoySpeak voice server: start VoySpeak with the VoyOMSI plugin (tools/voyspeak-plugin) and you are moved into its channel and hear the other players from where they stand. The radio key (see Controls) is the bus radio there.' },
         // (larger for those who find the texts hard to read, smaller for more of the picture)
         { type: 'slider', key: 'ui_scale', label: 'Game interface size', min: 0.5, max: 2, step: 0.05, def: 1, format: pct, store: r2 },
         { type: 'toggle', key: 'ui_scale_window', label: 'Interface grows with the window' },
