@@ -15,6 +15,8 @@ pub(crate) struct SoundState {
     pub(crate) soundscape: Option<crate::soundscape::Soundscape>,
     /// Voice chat in a session (`voice_chat`), alive while the settings have it on.
     pub(crate) voice: Option<crate::voice_chat::VoiceChat>,
+    /// Voice through GreenTeaSpeak in a session whose host names a server for it (`greentea`).
+    pub(crate) greentea: Option<crate::greentea::GreenTea>,
     /// The players whose voice this player muted (by name, kept between sessions).
     pub(crate) voice_mutes: omsi_voice::mutes::MuteList,
     /// How far the walker's eyes are inside the player's bus, as the sound follows them

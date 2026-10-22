@@ -98,6 +98,7 @@ impl App {
         crate::admin_panel::tick(self);
         crate::player_list::tick(self);
         self.tick_voice(dt);
+        self.tick_greentea(dt);
     }
 
     /// A command another player's game sent ours (`LanSession::command`): read by the session
@@ -141,6 +142,18 @@ impl App {
             Command::Voice(policy) => {
                 if let Some(v) = self.sound.voice.as_mut() {
                     v.set_policy(policy);
+                }
+            }
+            // the session's GreenTeaSpeak server: asked of the host (a dedicated server answers
+            // in `omsi_lan::admin`), told by it
+            Command::GtsAsked => {
+                if let Some(l) = self.net.lan.as_mut().filter(|l| l.role == omsi_net::Role::Host) {
+                    l.command(from, &omsi_lan::greentea::GtsServer::command(omsi_lan::greentea::hosted().as_ref()));
+                }
+            }
+            Command::Gts(server) => {
+                if let Some(g) = self.sound.greentea.as_mut() {
+                    g.set_server(server);
                 }
             }
             // an administrator silenced our voice chat, or allowed it again

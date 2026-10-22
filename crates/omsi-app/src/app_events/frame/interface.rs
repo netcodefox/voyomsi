@@ -143,6 +143,17 @@ impl App {
             for t in lan::hud_lines(lan) {
                 say(t.clone(), t, NoticeKind::Info);
             }
+            if let Some(g) = self.sound.greentea.as_ref() {
+                if let Some(t) = g.hud_line() {
+                    say(t.clone(), t, NoticeKind::Info);
+                }
+                if self.settings.voice_talker_list {
+                    for n in g.talkers() {
+                        let t = format!("GreenTeaSpeak: {n}");
+                        say(t.clone(), t, NoticeKind::Info);
+                    }
+                }
+            }
             if let Some(v) = self.sound.voice.as_ref() {
                 for t in v.notices() {
                     say(t.clone(), t, NoticeKind::Info);

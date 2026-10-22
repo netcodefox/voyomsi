@@ -6,6 +6,17 @@ promoted to stable releases (see [docs/VERSIONING.md](docs/VERSIONING.md)); the 
 
 > VoyOMSI is a fork of openOMSI; the entries below up to the fork were written for openOMSI.
 
+## Unreleased
+
+### VoyOMSI
+
+- **GreenTeaSpeak is back**, beside the built-in voice chat: a server that names a
+  GreenTeaSpeak voice server (`voice_server_uid`, `voice_channel`, `voice_channel_password` in
+  `server.cfg`, or `~/.voyomsi/voice.cfg` for a game that hosts) moves players who run
+  GreenTeaSpeak with VoyOMSI's plugin (`tools/greenteaspeak-plugin`) into its channel, with
+  positional voice and the bus radio on the radio key (B). *Settings → Sound → Voice through
+  GreenTeaSpeak* switches it off. See [docs/VOICE.md](docs/VOICE.md).
+
 ## 1.0.0 - 2026-10-22
 
 The first release of VoyOMSI.

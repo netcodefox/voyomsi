@@ -174,6 +174,7 @@ pub(super) fn options_pages(app: &App) -> Vec<Page> {
         switch_row(app, "voice_talker_list", "Show who is talking", "A line for each player you hear"),
         slider_row(app, "voice_volume", "Voices: volume", "How loud the other players' voices are", &pct),
         slider_row(app, "voice_mic_gain", "Microphone gain", "How much your microphone is amplified", &pct),
+        switch_row(app, "greenteaspeak", "Voice through GreenTeaSpeak", "On a server that names a GreenTeaSpeak voice server, with GreenTeaSpeak and the VoyOMSI plugin running"),
     ]
         .into_iter()
         .chain(crate::radio::option_rows(app, &pct))

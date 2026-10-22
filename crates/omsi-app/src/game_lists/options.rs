@@ -458,6 +458,7 @@ pub(super) fn toggle_now(app: &App, id: &str) -> Option<bool> {
         "voice_enabled" => s.voice_enabled,
         "voice_all_off" => s.voice_all_off,
         "voice_talker_list" => s.voice_talker_list,
+        "greenteaspeak" => s.greenteaspeak,
         _ => return None,
     })
 }
@@ -863,6 +864,10 @@ fn toggle_set_graphics_and_controls(app: &mut App, id: &str, on: bool, bit: Stri
         "voice_talker_list" => {
             app.settings.voice_talker_list = on;
             Some(("voice_talker_list", bit))
+        }
+        "greenteaspeak" => {
+            app.settings.greenteaspeak = on;
+            Some(("greenteaspeak", bit))
         }
         _ => None,
     }

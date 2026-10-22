@@ -75,6 +75,9 @@ pub struct ServerCfg {
     /// Voice chat of the players: on or off, the session-wide radio, how far a player is
     /// heard (`voice`, `voice_radio`, `voice_range`).
     pub voice: omsi_net::VoicePolicy,
+    /// Voice through GreenTeaSpeak and VoyOMSI's plugin for it, beside the built-in voice
+    /// chat (`voice_server_uid`, `voice_channel`, `voice_channel_password`; `greentea`).
+    pub greentea: Option<crate::greentea::GtsServer>,
     /// The server is listed in the public server list (`public_list`): name, icon, map, players.
     pub public_server: bool,
     /// The public list's address (`public_list_url`; empty: VoyOMSI's own).
@@ -192,11 +195,19 @@ share_maps = 0
 # within voice_range metres, quieter with the distance) or on the radio (the whole session).
 # The server only passes the audio on; it records and decodes nothing. voice (1/0) switches it
 # all off, voice_radio (1/0) the session-wide channel, voice_range is how far the nearby
-# channel carries (5 to 1000 m). The keys of the earlier voice chat
-# (voice_server_uid, voice_channel, voice_channel_password) do nothing any more
+# channel carries (5 to 1000 m).
 voice = 1
 voice_radio = 1
 voice_range = 75
+
+# voice through GreenTeaSpeak instead (or as well): players who run GreenTeaSpeak with
+# VoyOMSI's plugin are moved into this channel and hear each other where they stand.
+# voice_server_uid is the voice server's unique id (its info panel; needed), voice_channel
+# the channel's id or name (empty: no GreenTeaSpeak voice). voice_range and voice_radio above
+# count for it too. The password is sent to every player who joins.
+voice_server_uid =
+voice_channel =
+voice_channel_password =
 
 # list this server in the public server list that the launcher and the game show (name, icon,
 # map, players, the message of the day). Your name, message and icon are checked first by the
@@ -282,6 +293,7 @@ impl ServerCfg {
             uploads_keep_days: num("uploads_keep_days", 30).clamp(1, 3650) as u64,
             share_maps: flag("share_maps", true),
             voice: voice_policy(&kv),
+            greentea: crate::greentea::GtsServer::from_kv(|k| kv.get(k).cloned()),
             public_server: flag("public_server", false),
             public_list_url: kv.get("public_list_url").cloned().unwrap_or_default(),
             owner_bans: kv.get("owner_bans").filter(|v| !v.is_empty()).map(std::path::PathBuf::from),
@@ -316,13 +328,9 @@ pub fn installed_maps() -> Vec<String> {
     maps
 }
 
-/// The voice chat keys. A file from before the built-in voice chat names an outside voice
-/// server (`voice_channel` and the like): that is gone, and the log says so.
+/// The built-in voice chat's keys (GreenTeaSpeak's are `greentea::GtsServer::from_kv`).
 fn voice_policy(kv: &std::collections::HashMap<String, String>) -> omsi_net::VoicePolicy {
     let flag = |k: &str, d: bool| kv.get(k).map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on")).unwrap_or(d);
-    if ["voice_server_uid", "voice_channel", "voice_channel_password"].iter().any(|k| kv.get(*k).is_some_and(|v| !v.is_empty())) {
-        log::info!("server.cfg: voice_server_uid, voice_channel and voice_channel_password are ignored: voice chat is built in now (voice, voice_radio, voice_range)");
-    }
     let range = kv.get("voice_range").and_then(|v| v.parse::<f32>().ok()).unwrap_or(omsi_net::voice_net::DEFAULT_RANGE);
     omsi_net::VoicePolicy { enabled: flag("voice", false), radio: flag("voice_radio", false), range: 0.0 }.with_range(range)
 }
@@ -561,12 +569,16 @@ mod cfg_tests {
         assert!(!load("share_maps = 0\n").share_maps);
     }
     /// Voice chat is on in a new file and stays off in an old one that does not name it (an
-    /// update opens nothing); the keys of the earlier outside voice server do nothing; a wrong
-    /// range is cut to what the relay takes.
+    /// update opens nothing); the GreenTeaSpeak server's keys name a GreenTeaSpeak voice beside
+    /// it; a wrong range is cut to what the relay takes.
     #[test]
     fn voice_keys() {
-        let old = load("voice_server_uid = AbC=\nvoice_channel = 5\nvoice_range = 20\nvoice_radio = 0\n").voice;
+        let gts = load("voice_server_uid = AbC=\nvoice_channel = 5\nvoice_range = 20\nvoice_radio = 0\n");
+        let old = gts.voice;
         assert_eq!((old.enabled, old.radio, old.range), (false, false, 20.0));
+        let g = gts.greentea.expect("a GreenTeaSpeak server");
+        assert_eq!((g.server_uid.as_str(), g.channel.as_str(), g.range, g.radio), ("AbC=", "5", 20.0, false));
+        assert!(load(DEFAULT_CFG).greentea.is_none());
         let kept = load("name = old server\n").voice;
         assert!(!kept.enabled && !kept.radio);
         let on = load("voice = 1\nvoice_radio = 0\n").voice;

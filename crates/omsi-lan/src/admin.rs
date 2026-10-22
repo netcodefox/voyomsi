@@ -301,6 +301,8 @@ pub fn server_command(lan: &mut LanSession, from: u32, text: &str, adm: &mut Ser
             lan.set_voice_listener(from);
             lan.command(from, &policy)
         }
+        // ... and which GreenTeaSpeak server it talks on (`greentea`)
+        "gts?" => lan.command(from, &crate::greentea::GtsServer::command(crate::greentea::hosted().as_ref())),
         "auth?" => {
             if !adm.enabled() {
                 lan.command(from, "admin-no");

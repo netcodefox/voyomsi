@@ -16,6 +16,10 @@ pub enum Command {
     VoiceAsked,
     /// (host) what the session allows of voice chat.
     Voice(VoicePolicy),
+    /// A game asks the host which GreenTeaSpeak server the session talks on (`greentea`).
+    GtsAsked,
+    /// (host) the session's GreenTeaSpeak server, or None: it names none.
+    Gts(Option<crate::greentea::GtsServer>),
     /// (host) an administrator silenced our voice chat (true) or allowed it again.
     VoiceMuted(bool),
     /// (host) our bus put there, stopped.
@@ -75,7 +79,13 @@ impl Command {
         if text == "voice?" {
             return Some(Command::VoiceAsked);
         }
+        if text == "gts?" {
+            return Some(Command::GtsAsked);
+        }
         let host = from == HOST;
+        if text.starts_with("gts ") {
+            return crate::greentea::GtsServer::parse_command(text).filter(|_| host).map(Command::Gts);
+        }
         if let Some(m) = text.strip_prefix("voice-muted ") {
             return host.then(|| Command::VoiceMuted(m.trim() == "1"));
         }
@@ -172,6 +182,10 @@ mod tests {
         assert_eq!(Command::parse(4, "voice 1 0 60"), None, "only the host sets the policy");
         assert_eq!(Command::parse(1, "voice-muted 1"), Some(Command::VoiceMuted(true)));
         assert_eq!(Command::parse(4, "voice-muted 1"), None);
+        assert_eq!(Command::parse(3, "gts?"), Some(Command::GtsAsked));
+        assert_eq!(Command::parse(1, "gts -"), Some(Command::Gts(None)));
+        assert!(matches!(Command::parse(1, "gts 20 AbC= 5 - 1"), Some(Command::Gts(Some(s))) if s.channel == "5"));
+        assert_eq!(Command::parse(4, "gts 20 AbC= 5 - 1"), None, "only the host names the voice server");
         assert_eq!(Command::parse(1, "dance"), None);
     }
 }
