@@ -283,7 +283,7 @@ h1 { line-height: 1.25; }
 .comment .doc img { max-width: 100%; height: auto; }
 
 /* Donate: a small pill in the corner, out of the way of the content; it opens a menu
-   upwards with the ways to give (Buy Me a Coffee, Ko-fi) */
+   upwards with the way to give (voyspeak.com/donate) */
 .donate { position: fixed; right: 20px; bottom: 20px; z-index: 30; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .donate-fab { display: flex; align-items: center; gap: 8px; padding: 10px 18px 10px 14px; border: 0; border-radius: 999px;
   background: #ffdd00; color: #1b1b1b; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
