@@ -137,9 +137,8 @@ and never offered again.
 
 ## The website
 
-[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) publishes `site/` together with
-the Markdown files of `docs/` to GitHub Pages
-(https://openomsi.org/) whenever they change on `main`. The site renders
+`site/` is not published by this repository (it has no GitHub Pages workflow); served together
+with the Markdown files of `docs/`, it renders
 the Markdown in the browser, so a documentation change is one edit in `docs/`.
 The Download page offers the latest stable release. Beta downloads have a separate page
 with the same platform cards and installation instructions; when no beta is newer than
