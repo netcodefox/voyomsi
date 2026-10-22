@@ -212,14 +212,17 @@ impl Shell {
     }
 }
 
-/// The launcher's logo (`launcher/ui/logo.svg`), as the pixels of a texture of `LOGO_PX`.
-const LOGO: &str = include_str!("../../../../launcher/ui/logo.svg");
+/// The application icon (as the launcher's `logo.svg` shows it), as the pixels of a texture
+/// of `LOGO_PX`. (A picture, not the SVG: the logo inside the SVG is a bitmap, which the SVG
+/// rasterizer here does not draw.)
+const LOGO: &[u8] = include_bytes!("../../../../assets/icons/app/voyomsi-256.png");
 // (drawn 32 interface pixels wide, twice that on a Retina screen: a texture of about that
 // size, since a much larger one squeezed without mipmaps came out blurred and jagged)
 const LOGO_PX: u32 = 64;
 
 fn logo_pixels() -> Option<Vec<u8>> {
-    omsi_ui::icons::rasterize_rgba(LOGO, LOGO_PX, LOGO_PX)
+    let img = image::load_from_memory(LOGO).ok()?.into_rgba8();
+    Some(image::imageops::resize(&img, LOGO_PX, LOGO_PX, image::imageops::FilterType::Lanczos3).into_raw())
 }
 
 /// `tex` (RGBA8, `w` x `h`) copied out after the commands of `enc`.
