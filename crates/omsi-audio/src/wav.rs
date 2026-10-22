@@ -182,6 +182,20 @@ mod tests {
         b
     }
 
+    /// symphonia decodes a file as the game's own reader does (a 16-bit WAV, which both read).
+    #[test]
+    fn compressed_path_decodes_like_the_wav_reader() {
+        let pcm: Vec<i16> = (0..4410).map(|i| ((i as f32 * 0.05).sin() * 20000.0) as i16).collect();
+        let d: Vec<u8> = pcm.iter().flat_map(|x| x.to_le_bytes()).collect();
+        let b = wav(1, 16, &d);
+        let ours = parse_wav(&b).unwrap();
+        let theirs = parse_compressed(&b).unwrap();
+        assert_eq!((theirs.sample_rate, theirs.channels), (ours.sample_rate, ours.channels));
+        assert_eq!(theirs.samples.len(), ours.samples.len());
+        assert!(theirs.samples.iter().zip(&ours.samples).all(|(a, b)| (*a as i32 - *b as i32).abs() <= 1));
+        assert!(parse_compressed(b"not a sound file at all").is_err());
+    }
+
     #[test]
     fn extensible_float_double_g711_and_open_ended_data() {
         // WAVE_FORMAT_EXTENSIBLE with the float sub-format: read as floats, not integers
@@ -297,29 +311,33 @@ pub fn sniff(bytes: &[u8]) -> Option<&'static str> {
 /// A sound file of any format symphonia reads, decoded whole (the ambience's recordings ship
 /// as MP3 / FLAC; mods bring OGG, M4A, AIFF ...).
 pub fn parse_compressed(bytes: &[u8]) -> Result<WavData> {
-    use symphonia::core::audio::SampleBuffer;
-    use symphonia::core::codecs::DecoderOptions;
-    use symphonia::core::formats::FormatOptions;
+    use symphonia::core::codecs::audio::AudioDecoderOptions;
+    use symphonia::core::codecs::CodecParameters;
+    use symphonia::core::formats::probe::Hint;
+    use symphonia::core::formats::{FormatOptions, TrackType};
     use symphonia::core::io::MediaSourceStream;
     use symphonia::core::meta::MetadataOptions;
-    use symphonia::core::probe::Hint;
     let mss = MediaSourceStream::new(Box::new(std::io::Cursor::new(bytes.to_vec())), Default::default());
     let mut hint = Hint::new();
     hint.with_extension(sniff(bytes).unwrap_or("ogg"));
-    let mut format = symphonia::default::get_probe().format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())?.format;
-    let track = format.default_track().ok_or_else(|| anyhow!("no audio track"))?.clone();
-    let mut decoder = symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
-    let mut rate = track.codec_params.sample_rate.unwrap_or(0);
-    let mut channels = track.codec_params.channels.map(|c| c.count() as u16).unwrap_or(0);
+    let mut format = symphonia::default::get_probe().probe(&hint, mss, FormatOptions::default(), MetadataOptions::default())?;
+    let track = format.default_track(TrackType::Audio).ok_or_else(|| anyhow!("no audio track"))?.clone();
+    let Some(CodecParameters::Audio(params)) = &track.codec_params else {
+        return Err(anyhow!("no audio track"));
+    };
+    let mut decoder = symphonia::default::get_codecs().make_audio_decoder(params, &AudioDecoderOptions::default())?;
+    let mut rate = params.sample_rate.unwrap_or(0);
+    let mut channels = params.channels.as_ref().map(|c| c.count() as u16).unwrap_or(0);
     let mut samples = Vec::new();
-    let mut buf: Option<SampleBuffer<f32>> = None;
+    let mut buf: Vec<f32> = Vec::new();
     loop {
         let packet = match format.next_packet() {
-            Ok(p) => p,
+            Ok(Some(p)) => p,
+            Ok(None) => break,
             Err(symphonia::core::errors::Error::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
             Err(e) => return Err(e.into()),
         };
-        if packet.track_id() != track.id {
+        if packet.track_id != track.id {
             continue;
         }
         let decoded = match decoder.decode(&packet) {
@@ -327,15 +345,10 @@ pub fn parse_compressed(bytes: &[u8]) -> Result<WavData> {
             Err(symphonia::core::errors::Error::DecodeError(_)) => continue,
             Err(e) => return Err(e.into()),
         };
-        let spec = *decoded.spec();
-        rate = spec.rate;
-        channels = spec.channels.count() as u16;
-        let b = buf.get_or_insert_with(|| SampleBuffer::new(decoded.capacity() as u64, spec));
-        if b.capacity() < decoded.capacity() * spec.channels.count() {
-            *b = SampleBuffer::new(decoded.capacity() as u64, spec);
-        }
-        b.copy_interleaved_ref(decoded);
-        samples.extend(b.samples().iter().map(|x| quantize(*x)));
+        rate = decoded.spec().rate();
+        channels = decoded.spec().channels().count() as u16;
+        decoded.copy_to_vec_interleaved(&mut buf);
+        samples.extend(buf.iter().map(|x| quantize(*x)));
     }
     if rate == 0 || channels == 0 {
         return Err(anyhow!("no sound in the file"));
