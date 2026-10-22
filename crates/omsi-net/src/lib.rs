@@ -10,11 +10,13 @@
 //! of day, weather and season (`Welcome::world`), and the host's clock keeps everybody's in
 //! step (`CLOCK`).
 //!
-//! A host is found by its **session code** (`SessionCode`): the host's LAN address, its
-//! port and a random session id with a checksum, written in a base-32 alphabet without
-//! look-alike characters (`OMSI-7Q4K-2M9X-HD3P-R8TZ-KC5W-NB6E`). A joining player may give
-//! the code, an `ip`, `ip:port`, a bare port (a host on this machine) or nothing (search
-//! the network): `parse_join`.
+//! A host is found by its **session code** (`SessionCode`): the session id with a checksum,
+//! written in a base-32 alphabet without look-alike characters (`OMSI-7Q4K-2M9X-HD3P`); the
+//! joining game looks for the host of that session on the local network and through the
+//! relay (`bridge`). The longer codes that also carry the host's addresses and port
+//! (`OMSI-7Q4K-2M9X-HD3P-R8TZ-KC5W-NB6E`) are still read. A joining player may give the
+//! code, an `ip`, `ip:port`, a bare port (a host on this machine) or nothing (search the
+//! network): `parse_join`.
 //!
 //! The vehicle state is a bit-packed binary datagram (`wire`: position, pitch and bank,
 //! speed, steering, lights, indicators, engine speed and pedals, doors, wheel travel, the
@@ -149,6 +151,8 @@ pub const DEFAULT_PORT: u16 = 27015;
 /// Ports a host tries after the default one when that is taken (a second session on the
 /// same machine).
 pub const PORT_RANGE: u16 = 10;
+/// How long a short code's host is looked for on the local network before the relay is asked.
+const SHORT_CODE_SEARCH: Duration = Duration::from_millis(2000);
 /// States per second each player sends while its vehicle moves or changes.
 pub const RATE_HZ: f32 = 20.0;
 /// ... and while nothing has changed for a second.
@@ -206,17 +210,20 @@ const CHAT_RATE: (f32, f32) = (1.0, 3.0);
 /// The code alphabet: 24 letters without I and O, and the digits 2-9 - nothing that reads
 /// like something else (0/O, 1/I/L).
 const ALPHABET: &[u8; 32] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-/// Characters of a code without the `OMSI-` prefix and the dashes.
+/// Characters of a code with one address, without the `OMSI-` prefix and the dashes.
 pub const CODE_CHARS: usize = 24;
+/// Characters of a short code (the session id and a 12-bit checksum: 60 bits).
+pub const SHORT_CODE_CHARS: usize = 12;
 
 /// What a session code carries: where the host is and which session it runs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionCode {
-    /// Protocol version of the host that made the code.
+    /// Protocol version of the host that made the code (0 for a short code, which does not
+    /// carry it: the host turns away another version when the player says hello).
     pub protocol: u8,
     /// The host's addresses, best first (a VPN's, then the LAN's; see `addrs`): the joining
-    /// game tries them all at once and takes the one that answers. At least one, at most
-    /// `MAX_CODE_ADDRS`.
+    /// game tries them all at once and takes the one that answers. At most
+    /// `MAX_CODE_ADDRS`; none in a short code (the host is looked for, see `LanSession::join`).
     pub ips: Vec<Ipv4Addr>,
     pub port: u16,
     /// Random 48-bit session id.
@@ -248,6 +255,8 @@ const CODE_LAYOUT_MARK: u16 = 0x4F43;
 /// ... and of the third layout: the session id, then protocol, port and several addresses
 /// hidden under the mask (as many as the length says).
 const CODE_MULTI_MARK: u16 = 0x4D41;
+/// ... and of the short code: the session id alone.
+const CODE_SHORT_MARK: u16 = 0x5653;
 
 /// The bytes that hide protocol, address and port: drawn from the session id, so two
 /// sessions of one computer do not share the start of their codes.
@@ -313,13 +322,43 @@ impl SessionCode {
         self.ips.first().copied().unwrap_or(Ipv4Addr::LOCALHOST)
     }
 
-    /// `OMSI-XXXX-XXXX-…`: the session id first, then protocol, port and address(es) hidden
-    /// under a mask drawn from the id, then the checksum, in a base-32 alphabet in groups of
-    /// four. One address makes 15 bytes = 24 characters (the second layout: the protocol,
-    /// the address and the port); more addresses make the third layout, 11 + 4 per address
-    /// bytes (31 characters for two, 37 for three). With the address first, every code of
-    /// one computer began with the same 14 characters and two sessions were easy to confuse.
+    /// A short code (`OMSI-XXXX-XXXX-XXXX`) of the session id alone: what a player is shown
+    /// and passes on. The scrambled id (48 bits) and 12 bits of its checksum, 5 bits a
+    /// character. The joining game finds the host on the network and through the relay.
+    pub fn short(session: u64) -> SessionCode {
+        SessionCode {
+            protocol: 0,
+            ips: Vec::new(),
+            port: 0,
+            session,
+        }
+    }
+
+    /// Does the code carry no address (a short code)?
+    pub fn is_short(&self) -> bool {
+        self.ips.is_empty()
+    }
+
+    /// The code as a player is shown it: the short code (see `short`).
     pub fn encode(&self) -> String {
+        let sid = mix48(self.session).to_be_bytes();
+        let check = (crc16(&sid[2..8]) ^ CODE_SHORT_MARK) >> 4;
+        let v = ((mix48(self.session) << 12) | check as u64) & ((1 << 60) - 1);
+        let chars: Vec<char> = (0..SHORT_CODE_CHARS)
+            .map(|i| ALPHABET[((v >> (55 - i * 5)) & 31) as usize] as char)
+            .collect();
+        let groups: Vec<String> = chars.chunks(4).map(|c| c.iter().collect()).collect();
+        format!("OMSI-{}", groups.join("-"))
+    }
+
+    /// `OMSI-XXXX-XXXX-…` with the host's addresses: the session id first, then protocol,
+    /// port and address(es) hidden under a mask drawn from the id, then the checksum, in a
+    /// base-32 alphabet in groups of four. One address makes 15 bytes = 24 characters (the
+    /// second layout: the protocol, the address and the port); more addresses make the third
+    /// layout, 11 + 4 per address bytes (31 characters for two, 37 for three). With the
+    /// address first, every code of one computer began with the same 14 characters and two
+    /// sessions were easy to confuse.
+    pub fn encode_full(&self) -> String {
         let ips: Vec<Ipv4Addr> = if self.ips.is_empty() {
             vec![Ipv4Addr::LOCALHOST]
         } else {
@@ -409,7 +448,8 @@ impl SessionCode {
     /// The code lengths (characters after `OMSI-`) that exist: one address, or two to
     /// `MAX_CODE_ADDRS`.
     pub fn valid_lengths() -> Vec<usize> {
-        std::iter::once(CODE_CHARS)
+        [SHORT_CODE_CHARS, CODE_CHARS]
+            .into_iter()
             .chain((2..=MAX_CODE_ADDRS).map(|n| Self::chars_for(11 + 4 * n)))
             .collect()
     }
@@ -456,6 +496,15 @@ impl SessionCode {
             for k in (0..5).rev() {
                 bits.push(((v >> k) & 1) as u8);
             }
+        }
+        if s.len() == SHORT_CODE_CHARS {
+            let v = bits.iter().fold(0u64, |a, b| (a << 1) | *b as u64);
+            let mixed = v >> 12;
+            let check = (crc16(&mixed.to_be_bytes()[2..8]) ^ CODE_SHORT_MARK) >> 4;
+            if check as u64 != v & 0xFFF {
+                return Err("the session code has a typo (its checksum does not match)".into());
+            }
+            return Ok(SessionCode::short(unmix48(mixed)));
         }
         let n_bytes = bits.len() / 8;
         let bytes: Vec<u8> = (0..n_bytes)
@@ -536,7 +585,10 @@ pub fn looks_like_code(text: &str) -> bool {
     // the full code, the code without its prefix, or something that was meant to be one
     // (the prefix and a few groups: a code cut short while copying)
     let ok = |s: &str| SessionCode::unpadded(s).is_some();
-    ok(&s) || (s.starts_with("OMSI") && (ok(&s[4..]) || (t.starts_with("OMSI-") && s.len() >= 8)))
+    // (twelve letters and digits in lower case are a computer's name rather than a short
+    // code without its prefix, which is copied in capitals)
+    let name = s.len() == SHORT_CODE_CHARS && !t.contains('-') && text.bytes().any(|b| b.is_ascii_lowercase());
+    (ok(&s) && !name) ||(s.starts_with("OMSI") && (ok(&s[4..]) || (t.starts_with("OMSI-") && s.len() >= 8)))
 }
 
 /// A session id as it is written in messages (12 hex digits).
@@ -1619,6 +1671,20 @@ impl LanSession {
                         return Err(format!("the session code was made by a game with LAN protocol {p}, this game speaks protocol {PROTOCOL} - both players need the same version"));
                     }
                 }
+                // a short code: the host of that session on the local network, else
+                // wherever the relay says it is
+                if let (true, Some(id)) = (addrs.is_empty(), session) {
+                    let found = Self::discover_session(DEFAULT_PORT, Some(id), name, world.clone(), SHORT_CODE_SEARCH)
+                        .map_err(|e| format!("searching the network failed: {e}"))?;
+                    if let Some(s) = found {
+                        return Ok(s);
+                    }
+                    let s = Self::join_addr(addrs, session, name, world).map_err(|e| format!("cannot open a network socket: {e}"))?;
+                    if s.bridge.is_none() {
+                        return Err("the host of this session code was not found on the local network (the relay over the internet is switched off)".into());
+                    }
+                    return Ok(s);
+                }
                 Self::join_addr(addrs, session, name, world).map_err(|e| format!("cannot open a network socket: {e}"))
             }
         }
@@ -1627,6 +1693,17 @@ impl LanSession {
     /// Look for a host on the local network for up to `wait`; joins the first that answers.
     pub fn discover(
         port: u16,
+        name: &str,
+        world: WorldInfo,
+        wait: Duration,
+    ) -> std::io::Result<Option<LanSession>> {
+        Self::discover_session(port, None, name, world, wait)
+    }
+
+    /// `discover`, taking only the host of `session` when it is given.
+    fn discover_session(
+        port: u16,
+        session: Option<u64>,
         name: &str,
         world: WorldInfo,
         wait: Duration,
@@ -1674,8 +1751,11 @@ impl LanSession {
                         clean_text(field(&parts, 5), 8),
                         clean_text(field(&parts, 4), 260)
                     );
-                    let session = parse_session_hex(field(&parts, 3));
-                    return Self::join_addr(vec![from], session, name, world).map(Some);
+                    let found = parse_session_hex(field(&parts, 3));
+                    if session.is_some() && found != session {
+                        continue;
+                    }
+                    return Self::join_addr(vec![from], found, name, world).map(Some);
                 }
             }
         }

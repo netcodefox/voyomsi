@@ -1339,7 +1339,7 @@ mod choice_tests {
             }
             assert_eq!(server_join_address(address, JoinProto::WebSocket, Some(&info)).unwrap().0, info.reached_at);
         }
-        for address in ["https://play.example.org", "http://play.example.org:27025", "https://play.example.org:27015", "ws://play.example.org/ws", "wss://play.example.org/ws", "voyomsi", "VoyOMSI", "abc.trycloudflare.com", "abc.trycloudflare.com/ws", "abc.trycloudflare.com:443/ws", "ABC.TryCloudflare.com/ws", "me@abc.trycloudflare.com/ws"] {
+        for address in ["https://play.example.org", "http://play.example.org:27025", "https://play.example.org:27015", "ws://play.example.org/ws", "wss://play.example.org/ws", "openomsi", "OpenOMSI", "abc.trycloudflare.com", "abc.trycloudflare.com/ws", "abc.trycloudflare.com:443/ws", "ABC.TryCloudflare.com/ws", "me@abc.trycloudflare.com/ws"] {
             for protocol in [JoinProto::Auto, JoinProto::WebSocket] {
                 assert_eq!(server_join_address(address, protocol, Some(&info)).unwrap(), (address.into(), JoinProto::WebSocket));
             }

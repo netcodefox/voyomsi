@@ -317,7 +317,7 @@ fn session_codes() {
         27016,
         0xA1B2_C3D4_E5F6,
     );
-    let text = c.encode();
+    let text = c.encode_full();
     assert!(text.starts_with("OMSI-"), "{text}");
     assert_eq!(text.len(), 5 + CODE_CHARS + 5, "{text}");
     assert!(!text[5..].contains(['0', '1', 'O', 'I']), "{text}");
@@ -339,7 +339,7 @@ fn session_codes() {
         session: 0xA1B2_C3D4_E5F7,
         ..c.clone()
     };
-    let (a, b) = (c.encode(), other.encode());
+    let (a, b) = (c.encode_full(), other.encode_full());
     assert_ne!(a[5..9], b[5..9], "{a} {b}");
     let same = a.chars().zip(b.chars()).filter(|(x, y)| x == y).count();
     assert!(same < 12, "{a} {b}");
@@ -348,7 +348,7 @@ fn session_codes() {
             session: id,
             ..c.clone()
         };
-        assert_eq!(SessionCode::decode(&k.encode()).unwrap(), k);
+        assert_eq!(SessionCode::decode(&k.encode_full()).unwrap(), k);
     }
     // a code of the first layout is still read
     assert_eq!(SessionCode::decode(&c.encode_first_layout()).unwrap(), c);
@@ -357,11 +357,11 @@ fn session_codes() {
         protocol: 2,
         ..c.clone()
     };
-    assert!(describe_join(&old.encode())
+    assert!(describe_join(&old.encode_full())
         .unwrap_err()
         .contains("protocol 2"));
     assert!(
-        LanSession::join(&old.encode(), "x", world("m"), Duration::from_millis(10))
+        LanSession::join(&old.encode_full(), "x", world("m"), Duration::from_millis(10))
             .err()
             .unwrap()
             .contains("same version")
@@ -377,7 +377,7 @@ fn session_codes() {
         port: 27015,
         session: 0x49A5_0EA5_8A1F,
     };
-    let text = multi.encode();
+    let text = multi.encode_full();
     // (37 characters, the last group filled up to four: 40)
     assert_eq!(text.replace('-', "").len(), 4 + 40, "{text}");
     assert!(text.split('-').all(|g| g.len() == 4), "{text}");
@@ -391,12 +391,12 @@ fn session_codes() {
         ips: multi.ips[..2].to_vec(),
         ..multi.clone()
     };
-    assert_eq!(two.encode().replace('-', "").len(), 4 + 32);
+    assert_eq!(two.encode_full().replace('-', "").len(), 4 + 32);
     // the code without the filling (as an older game wrote it) is read the same
-    let short: String = two.encode().replace('-', "")[4..35].to_string();
+    let short: String = two.encode_full().replace('-', "")[4..35].to_string();
     assert_eq!(SessionCode::decode(&short).unwrap(), two);
-    assert!(looks_like_code(&two.encode()) && looks_like_code(&short));
-    assert_eq!(SessionCode::decode(&two.encode()).unwrap(), two);
+    assert!(looks_like_code(&two.encode_full()) && looks_like_code(&short));
+    assert_eq!(SessionCode::decode(&two.encode_full()).unwrap(), two);
     // every character matters in the long codes too
     let chars: Vec<char> = text.chars().collect();
     for i in (5..chars.len()).filter(|i| chars[*i] != '-') {
@@ -426,6 +426,42 @@ fn session_codes() {
             protocol: Some(PROTOCOL as u8)
         }
     );
+}
+
+#[test]
+fn short_session_codes() {
+    let c = SessionCode::single(PROTOCOL as u8, Ipv4Addr::new(192, 168, 178, 23), 27016, 0xA1B2_C3D4_E5F6);
+    let text = c.encode();
+    // OMSI-XXXX-XXXX-XXXX
+    assert_eq!(text.len(), 5 + SHORT_CODE_CHARS + 2, "{text}");
+    assert!(text.split('-').skip(1).all(|g| g.len() == 4), "{text}");
+    assert!(!text[5..].contains(['0', '1', 'O', 'I']), "{text}");
+    let back = SessionCode::decode(&text).unwrap();
+    assert_eq!(back, SessionCode::short(0xA1B2_C3D4_E5F6));
+    assert!(back.is_short() && back.addrs().is_empty());
+    // typed sloppily: lower case with the prefix, no dashes, spaces
+    assert_eq!(SessionCode::decode(&text.to_lowercase().replace('-', " ")).unwrap(), back);
+    assert_eq!(SessionCode::decode(&text[5..]).unwrap(), back);
+    for id in [1u64, 42, 0xFFFF_FFFF_FFFF, random_session_id()] {
+        assert_eq!(SessionCode::decode(&SessionCode::short(id).encode()).unwrap().session, id);
+    }
+    // every character matters
+    let chars: Vec<char> = text.chars().collect();
+    for i in (5..chars.len()).filter(|i| chars[*i] != '-') {
+        let mut bad = chars.clone();
+        let k = ALPHABET.iter().position(|c| *c as char == bad[i]).unwrap();
+        bad[i] = ALPHABET[k ^ 1] as char;
+        let bad: String = bad.into_iter().collect();
+        assert!(SessionCode::decode(&bad).unwrap_err().contains("typo"), "{bad}");
+    }
+    // a code, not a computer's name; twelve small letters without a dash are a name
+    assert!(looks_like_code(&text) && looks_like_code(&text[5..]));
+    assert!(!looks_like_code("buspc2kitchen"[..12].as_ref()));
+    assert_eq!(
+        parse_join(&text).unwrap(),
+        JoinTarget::Direct { addrs: vec![], session: Some(0xA1B2_C3D4_E5F6), protocol: None }
+    );
+    assert!(describe_join(&text).unwrap().contains("looked for"));
 }
 
 #[test]
@@ -467,7 +503,7 @@ fn join_targets() {
     assert!(parse_join("99999").is_err());
     let c = SessionCode::single(PROTOCOL as u8, Ipv4Addr::new(10, 0, 0, 7), 27015, 42);
     assert_eq!(
-        parse_join(&c.encode()).unwrap(),
+        parse_join(&c.encode_full()).unwrap(),
         JoinTarget::Direct {
             addrs: vec!["10.0.0.7:27015".parse().unwrap()],
             session: Some(42),
@@ -482,7 +518,7 @@ fn join_targets() {
     assert!(describe_join("27016")
         .unwrap()
         .contains("this computer, port 27016"));
-    assert!(describe_join(&c.encode())
+    assert!(describe_join(&c.encode_full())
         .unwrap()
         .contains("10.0.0.7:27015"));
     assert!(describe_join("OMSI-ABCD-EFGH").is_err());
@@ -735,7 +771,7 @@ fn host_and_two_clients_exchange_states() {
     let mut host =
         LanSession::host(28100, "host", world("maps/Grundorf/global.cfg"), true).unwrap();
     let port = host.local_addr().unwrap().port();
-    let code = host.code().unwrap().encode();
+    let code = host.code().unwrap().encode_full();
     let mut a = LanSession::join(
         &code,
         "a",

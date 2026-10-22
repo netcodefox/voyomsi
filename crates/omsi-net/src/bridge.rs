@@ -437,6 +437,28 @@ pub fn lookup_tunnel(session: u64) -> Option<String> {
     tunnel_of(session, &body, crate::hostkey::now())
 }
 
+/// Joining game: the addresses the host of `session` posted last (see `relay_loop`), for a
+/// short code, which carries none.
+pub fn lookup_host_addrs(session: u64) -> Vec<SocketAddr> {
+    if cfg!(test) || omsi_cfg::flags::OMSI_NO_BRIDGE.live_os().is_some() {
+        return Vec::new();
+    }
+    let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(8)).user_agent("VoyOMSI").build();
+    let Some(body) = agent.get(&format!("{RELAY}/{}/json?poll=1&since=30m", topic(session))).call().ok().and_then(|r| r.into_string().ok()) else {
+        return Vec::new();
+    };
+    let now = crate::hostkey::now();
+    let mut out: Vec<SocketAddr> = Vec::new();
+    for found in body.lines().filter_map(|l| json_field(l, "message")).filter_map(|m| relay_post(false, session, &m, now)).map(|(_, f)| f) {
+        for a in found {
+            if !out.contains(&a) {
+                out.push(a);
+            }
+        }
+    }
+    out
+}
+
 fn tunnel_of(session: u64, body: &str, now: u64) -> Option<String> {
     body.lines()
         .filter_map(|l| json_field(l, "message"))

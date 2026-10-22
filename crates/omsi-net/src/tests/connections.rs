@@ -114,6 +114,27 @@ fn discovery_finds_a_host() {
 }
 
 #[test]
+fn a_short_code_finds_its_own_host_on_the_local_network() {
+    // two hosts answer the search: the code's and another session
+    let other = LanSession::host(DEFAULT_PORT + 8, "other", world("m"), false).unwrap();
+    let host = LanSession::host(DEFAULT_PORT + 9, "mine", world("m"), false).unwrap();
+    let port = host.local_addr().unwrap().port();
+    let code = host.code().unwrap().encode();
+    let h = std::thread::spawn(move || {
+        let (mut host, mut other) = (host, other);
+        for _ in 0..80 {
+            host.tick(0.05, &pose(0.0));
+            other.tick(0.05, &pose(0.0));
+            std::thread::sleep(Duration::from_millis(25));
+        }
+    });
+    let c = LanSession::join(&code, "c", world("m"), Duration::from_millis(10)).unwrap();
+    h.join().unwrap();
+    // (by the loopback or by the broadcast: the port tells which host)
+    assert_eq!(c.candidates.iter().map(|a| a.port()).collect::<Vec<_>>(), vec![port]);
+}
+
+#[test]
 fn a_join_nobody_answers_gives_up_with_a_message() {
     // an address where nothing answers (TEST-NET-1: never routed)
     let mut c = LanSession::join("192.0.2.1:27015", "c", world("m"), Duration::from_millis(10))
@@ -148,7 +169,7 @@ fn a_code_with_a_dead_address_still_joins_by_the_live_one() {
         port,
         session: host.session,
     };
-    let mut c = LanSession::join(&code.encode(), "c", world("m"), Duration::from_millis(10))
+    let mut c = LanSession::join(&code.encode_full(), "c", world("m"), Duration::from_millis(10))
         .unwrap();
     assert_eq!(c.candidates.len(), 2);
     assert_eq!(c.host, None);

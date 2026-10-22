@@ -32,6 +32,9 @@ pub fn describe_join(text: &str) -> Result<String, String> {
     }
     if looks_like_code(t) {
         let c = SessionCode::decode(t)?;
+        if c.is_short() {
+            return Ok(format!("session {}: its host is looked for on the local network and over the internet", session_hex(c.session)));
+        }
         if c.protocol as u32 != PROTOCOL {
             return Err(format!("this code was made by a game with LAN protocol {}, this one speaks {PROTOCOL} - both players need the same version", c.protocol));
         }
@@ -86,7 +89,7 @@ pub fn describe_join(text: &str) -> Result<String, String> {
     {
         return Ok(format!("the computer named {host}, port {port}"));
     }
-    Err(format!("'{t}' is neither a session code (OMSI-XXXX-…), an address (192.168.1.20 or 192.168.1.20:27015), a port, nor empty (search)"))
+    Err(format!("'{t}' is neither a session code (OMSI-XXXX-XXXX-XXXX), an address (192.168.1.20 or 192.168.1.20:27015), a port, nor empty (search)"))
 }
 
 /// Read what a player typed into the join field: a session code, `ip`, `ip:port`,
@@ -105,7 +108,7 @@ pub fn parse_join(text: &str) -> Result<JoinTarget, String> {
         return Ok(JoinTarget::Direct {
             addrs: c.addrs(),
             session: Some(c.session),
-            protocol: Some(c.protocol),
+            protocol: (!c.is_short()).then_some(c.protocol),
         });
     }
     if t.bytes().all(|b| b.is_ascii_digit()) {

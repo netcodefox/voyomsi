@@ -1,10 +1,10 @@
-//! The official server by name: a player types `voyomsi` (the launcher lists it as
-//! "VoyOMSI | Official Server") and is joined to wherever that server is reached now.
+//! The official server by name: a player types `openomsi` (the launcher lists it as
+//! "openOMSI | Official Server") and is joined to wherever that server is reached now.
 //!
 //! The server is reached through a Cloudflare quick tunnel, whose address changes whenever
 //! it starts again. It posts that address to a fixed topic of the public relay (`bridge`'s
 //! ntfy.sh) every few minutes, signed with the official server's Ed25519 key; a game asking
-//! for `voyomsi` takes the newest post whose signature checks out with the public key
+//! for `openomsi` takes the newest post whose signature checks out with the public key
 //! below and which is recent. Anybody can post to the topic, nobody else can sign: a forged
 //! address is never taken.
 
@@ -147,6 +147,6 @@ mod tests {
         assert!(verify(&format!("{text} #{}", hex(other.sign(text.as_bytes()).as_ref())), &key, t).is_none());
         let good = post("https://a.trycloudflare.com", t);
         assert!(verify(&good.replace("https://a.", "https://b."), &key, t).is_none());
-        assert!(is_alias(" VoyOMSI "));
+        assert!(is_alias(" OpenOMSI "));
     }
 }

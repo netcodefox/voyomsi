@@ -22,6 +22,20 @@ pub fn query_session(code: &str) -> Result<ServerInfo, String> {
             }) as Query<ServerInfo>
         })
         .collect();
+    // (a short code carries no address: the ones the host posted on the relay)
+    if code.is_short() {
+        let session = code.session;
+        jobs.push(Box::new(move || {
+            let mut last = Err("the host did not answer".to_string());
+            for a in crate::bridge::lookup_host_addrs(session) {
+                last = super::query(&format!("http://{}:{}", a.ip(), a.port().saturating_add(10)), false);
+                if last.is_ok() {
+                    break;
+                }
+            }
+            last
+        }));
+    }
     jobs.push(Box::new(move || {
         let url = crate::bridge::lookup_tunnel(code.session).ok_or("the host did not answer")?;
         super::query(&url, false)
@@ -93,7 +107,7 @@ mod tests {
         });
         let code =
             crate::SessionCode::single(crate::PROTOCOL as u8, Ipv4Addr::LOCALHOST, port - 10, 42)
-                .encode();
+                .encode_full();
         let result = super::query_session(&code);
         worker.join().unwrap();
         let info = result.unwrap();
